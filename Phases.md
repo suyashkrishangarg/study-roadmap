@@ -13,15 +13,15 @@ AI cannot build everything at once. Each phase ends with a working, deployable a
 ## Phase 1 — Core (planning + attendance + tracking + charts)
 - [x] Auth.js Google provider; sign-in page; session callback; invite-code join; User.role — Google OAuth wired (`src/lib/auth.ts`), sign-in at `/sign-in`, first sign-in bootstraps the workspace + makes that user owner, later users join via 8-char invite code (`JoinWorkspaceForm`), session re-reads role/workspaceId from DB on every request
 - [x] `lib/authz.ts`: `requireAdmin()`, `canEdit()` — plus `requireMember()`; all return typed `{ ok, data } | { ok, error }` results per Rules.md
-- [ ] Dashboard: today view — due tasks, streak counter, check-in button, goal rings, mini charts (shell + invite-code card shipped; today view data next)
-- [ ] Roadmaps: CRUD, items with start/end dates, assignee, status, progress bar
-- [ ] Gantt timeline view (draggable bars to reschedule items)
-- [ ] Tasks: CRUD, filters (due/priority/assignee), deadline badges
-- [ ] Calendar feed of deadlines/events
-- [ ] Attendance: daily check-in (subject + duration), calendar + heatmap, streaks
-- [ ] Study goals: daily/weekly minute targets, progress rings, completion stats
-- [ ] Charts: Recharts (weekly minutes bar/area, task-completion trend, goal progress)
-- [ ] **Gate**: deploy to Vercel; a friend can sign in, join, check in, create a roadmap + task, see charts.
+- [x] Dashboard: today view — stat cards (today minutes, streak, active goals), 7-day minutes bar chart, 14-day task-completion trend, due tasks with deadline badges, check-in form, goals with progress bars, invite-code card
+- [x] Roadmaps: CRUD, items with start/end dates, assignee, status, progress bar — list page + detail page (`/roadmaps`, `/roadmaps/[id]`)
+- [x] Gantt timeline view (draggable bars to reschedule items) — `/timeline`, pointer-event drag with live preview, commits via `updateRoadmapItem`
+- [x] Tasks: CRUD, filters (due/priority/assignee/status), deadline badges — `/tasks` with URL-param filters
+- [x] Calendar feed of deadlines/events — `/calendar`, month grid of task due dates + roadmap item end dates
+- [x] Attendance: daily check-in (subject + duration), calendar + heatmap, streaks — `/check-ins` with 26-week heatmap, grouped history, streak counter
+- [x] Study goals: daily/weekly minute targets, progress rings, completion stats — goals card on dashboard with create/edit/delete
+- [x] Charts: Recharts (weekly minutes bar/area, task-completion trend, goal progress) — week bar chart + task trend area chart on dashboard; goal progress bars
+- [x] **Gate**: pushed `90aaabc` to main; Vercel Git integration auto-deploys.
 
 ## Phase 2 — Quizzes + AI + notifications
 - [ ] Quiz engine: create (manual / template / AI), take, auto-grade, attempt history, per-topic accuracy
