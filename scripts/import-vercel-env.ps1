@@ -1,6 +1,6 @@
 # Imports variables from a local .env file into a Vercel project via the REST API.
 # The Vercel CLI can only `env pull` (download), and the dashboard has no bulk
-# import — this script pushes every key (except DATABASE_URL, which the Neon
+# import - this script pushes every key (except DATABASE_URL, which the Neon
 # Marketplace integration already injects) to Production + Preview.
 #
 # Usage (from the project root):
@@ -31,7 +31,7 @@ function Find-Project {
       if ($match) { return @{ Project = $match; TeamId = $team.id } }
     }
   } catch {
-    # not in a team, or no permission — fall through
+    # not in a team, or no permission - fall through
   }
   return $null
 }
@@ -45,7 +45,9 @@ if (-not $found) {
 
 $project = $found.Project
 $teamId = $found.TeamId
-Write-Host "Project: $($project.name) (id $($project.id))$(if ($teamId) { " · team $teamId" })"
+$scope = "personal"
+if ($teamId) { $scope = "team $teamId" }
+Write-Host ("Project: {0} (id {1}, {2})" -f $project.name, $project.id, $scope)
 
 $uri = "https://api.vercel.com/v10/projects/$($project.id)/env"
 if ($teamId) { $uri += "?teamId=$teamId" }
@@ -66,7 +68,7 @@ Get-Content $EnvFile | ForEach-Object {
   $value = $line.Substring($idx + 1).Trim().Trim('"')
 
   if ($key -eq "DATABASE_URL") {
-    Write-Host "SKIP   DATABASE_URL — already injected by the Neon integration"
+    Write-Host "SKIP   DATABASE_URL - already injected by the Neon integration"
     return
   }
 
@@ -85,12 +87,12 @@ Get-Content $EnvFile | ForEach-Object {
   } catch {
     $msg = "$($_.ErrorDetails.Message)"
     if ($msg -match "already exists") {
-      Write-Host "EXISTS $key — already set on Vercel" -ForegroundColor Yellow
+      Write-Host "EXISTS $key - already set on Vercel" -ForegroundColor Yellow
     } else {
-      Write-Host "FAILED $key — $msg" -ForegroundColor Red
+      Write-Host "FAILED $key - $msg" -ForegroundColor Red
     }
   }
 }
 
 Write-Host ""
-Write-Host "Done — $added variable(s) added to '$($project.name)' (Production + Preview)."
+Write-Host ("Done - {0} variable(s) added to '{1}' (Production + Preview)." -f $added, $project.name)
