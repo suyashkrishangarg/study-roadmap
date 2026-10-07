@@ -1,0 +1,362 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  owner
+  admin
+  member
+}
+
+enum Priority {
+  low
+  medium
+  high
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+}
+
+enum RoadmapItemStatus {
+  todo
+  in_progress
+  done
+}
+
+enum GoalFrequency {
+  daily
+  weekly
+}
+
+enum QuestionType {
+  mcq
+  true_false
+  short_answer
+}
+
+enum QuizSource {
+  ai
+  manual
+  template
+}
+
+enum MarathonType {
+  scheduled
+  ondemand
+}
+
+enum NotificationType {
+  deadline_approaching
+  marathon_starting
+  quiz_graded
+  system
+}
+
+enum PracticeQuestionDifficulty {
+  easy
+  medium
+  hard
+}
+
+enum PracticeQuestionSource {
+  manual
+  template
+  ai
+}
+
+model Workspace {
+  id         String   @id @default(cuid())
+  name       String?
+  inviteCode String   @unique @default(cuid())
+  settings   Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  users User[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  image     String?
+  role      Role     @default(member)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  authoredTasks    Task[]            @relation("TaskAuthor")
+  assignedTasks    Task[]            @relation("TaskAssignee")
+  roadmapItems     RoadmapItem[]
+  checkIns         CheckIn[]
+  goals            Goal[]
+  quizzes          Quiz[]
+  quizAttempts     QuizAttempt[]
+  marathonSessions MarathonSession[]
+  flashcards       Flashcard[]
+  aiMessages       AIMessage[]
+  notifications    Notification[]
+  activityEvents   ActivityEvent[]
+  practiceQuestions PracticeQuestion[]
+}
+
+model Roadmap {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  color       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  items RoadmapItem[]
+}
+
+model RoadmapItem {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  status      RoadmapItemStatus @default(todo)
+  progress    Int               @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  sortOrder   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  roadmapId String
+  roadmap   Roadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  assigneeId String?
+  assignee   User?   @relation(fields: [assigneeId], references: [id])
+
+  tasks Task[]
+
+  @@index([roadmapId, sortOrder])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  notes       String?
+  priority    Priority   @default(medium)
+  status      TaskStatus @default(todo)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  authorId String
+  author   User   @relation("TaskAuthor", fields: [authorId], references: [id])
+
+  assigneeId String?
+  assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  roadmapItemId String?
+  roadmapItem   RoadmapItem? @relation(fields: [roadmapItemId], references: [id])
+
+  @@index([authorId])
+  @@index([assigneeId])
+  @@index([status, dueDate])
+}
+
+model CheckIn {
+  id          String   @id @default(cuid())
+  subject     String
+  durationMin Int
+  note        String?
+  date        DateTime
+  createdAt   DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, subject])
+  @@index([userId, date])
+}
+
+model Goal {
+  id        String         @id @default(cuid())
+  frequency GoalFrequency
+  targetMin Int
+  subject   String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, frequency])
+}
+
+model Quiz {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  topic       String?
+  source      QuizSource @default(manual)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@index([authorId])
+}
+
+model QuizQuestion {
+  id          String       @id @default(cuid())
+  type        QuestionType @default(mcq)
+  prompt      String
+  options     Json?
+  answer      String
+  explanation String?
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+
+  quizId String
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  score       Int
+  total       Int
+  answers     Json
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  quizId String
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, quizId])
+}
+
+model PracticeQuestion {
+  id          String                     @id @default(cuid())
+  topic       String
+  difficulty  PracticeQuestionDifficulty @default(medium)
+  prompt      String
+  options     Json?
+  solution    String?
+  source      PracticeQuestionSource     @default(manual)
+  mastered    Boolean                    @default(false)
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  @@index([topic, difficulty])
+  @@index([authorId])
+}
+
+model Marathon {
+  id          String       @id @default(cuid())
+  title       String
+  type        MarathonType
+  startsAt    DateTime?
+  durationMin Int
+  goalMin     Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  sessions MarathonSession[]
+}
+
+model MarathonSession {
+  id        String   @id @default(cuid())
+  minutes   Int      @default(0)
+  completed Boolean  @default(false)
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  createdAt DateTime @default(now())
+
+  marathonId String
+  marathon   Marathon @relation(fields: [marathonId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([marathonId, startedAt])
+  @@index([userId, startedAt])
+}
+
+model Flashcard {
+  id             String    @id @default(cuid())
+  deckId         String?
+  front          String
+  back           String
+  topic          String?
+  easeFactor     Float     @default(2.5)
+  intervalDays   Int       @default(0)
+  repetitions    Int       @default(0)
+  dueDate        DateTime  @default(now())
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueDate])
+  @@index([deckId])
+}
+
+model AIMessage {
+  id        String   @id @default(cuid())
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Notification {
+  id        String             @id @default(cuid())
+  type      NotificationType
+  title     String
+  body      String?
+  refId     String?
+  readAt    DateTime?
+  createdAt DateTime           @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  type      String
+  refId     String?
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
