@@ -92,8 +92,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
   authoredTasks    Task[]            @relation("TaskAuthor")
   assignedTasks    Task[]            @relation("TaskAssignee")

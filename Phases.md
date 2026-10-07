@@ -7,8 +7,8 @@ AI cannot build everything at once. Each phase ends with a working, deployable a
 - [x] Push to GitHub; connect Vercel Git integration — pushed to `suyashkrishangarg/study-roadmap` (main); Vercel Git integration connected by user
 - [x] Create Neon project via Vercel Marketplace; verify `DATABASE_URL` injection — Neon project `ep-damp-sky-b3te2ik4` created; pooled `DATABASE_URL` auto-injected on Vercel; local `.env`/`.env.local` use the **unpooled** URL (migrations can't run through pgbouncer) — **password still needs to be pasted in**
 - [x] Install deps: `prisma @prisma/client @neondatabase/serverless next-auth@beta recharts apexcharts react-apexcharts motion @phosphor-icons/react` (+ `geist`, `clsx`, `tailwind-merge`; prisma pinned to `6.19.3` — v8 RC replaced the classic CLI)
-- [ ] `prisma migrate dev` with the full schema from Architecture.md — schema written + validated (`prisma/schema.prisma`, 18 models, aligned to Plan.md); run `npx prisma migrate dev --name init` once the real `DATABASE_URL` is in `.env`
-- [ ] Env vars in `.env.local`: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `GOOGLE_GENERATIVE_AI_API_KEY` — templates in place; **fill in real values** (Google OAuth + AUTH_SECRET + Gemini key still pending)
+- [x] `prisma migrate dev` with the full schema from Architecture.md — migration `20261007223051_init` applied to Neon `neondb` (18 tables + 10 enums); client regenerated
+- [ ] Env vars in `.env.local`: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `GOOGLE_GENERATIVE_AI_API_KEY` — `DATABASE_URL` + `GOOGLE_GENERATIVE_AI_API_KEY` set locally; **still needed**: `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` (Google Cloud OAuth client). Also add all four to Vercel → Settings → Environment Variables (DATABASE_URL is auto-injected there)
 
 ## Phase 1 — Core (planning + attendance + tracking + charts)
 - [ ] Auth.js Google provider; sign-in page; session callback; invite-code join; User.role
