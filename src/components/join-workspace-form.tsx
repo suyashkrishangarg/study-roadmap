@@ -30,7 +30,7 @@ export function JoinWorkspaceForm() {
   );
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center px-6 py-16">
+    <div className="flex min-h-[100dvh] items-center justify-center px-6 py-16">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -69,6 +69,6 @@ export function JoinWorkspaceForm() {
           </form>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

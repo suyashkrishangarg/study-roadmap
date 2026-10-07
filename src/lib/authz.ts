@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
 import type { Role } from "@prisma/client";
 
+export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
 export type AuthedUser = {
   id: string;
   email: string;

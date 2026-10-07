@@ -80,7 +80,12 @@ model Workspace {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  users User[]
+  users         User[]
+  roadmaps      Roadmap[]
+  tasks         Task[]
+  quizzes       Quiz[]
+  practiceQuestions PracticeQuestion[]
+  marathons     Marathon[]
 }
 
 model User {
@@ -97,7 +102,9 @@ model User {
 
   authoredTasks    Task[]            @relation("TaskAuthor")
   assignedTasks    Task[]            @relation("TaskAssignee")
-  roadmapItems     RoadmapItem[]
+  authoredRoadmapItems RoadmapItem[] @relation("RoadmapItemAuthor")
+  assignedRoadmapItems RoadmapItem[] @relation("RoadmapItemAssignee")
+  roadmaps         Roadmap[]
   checkIns         CheckIn[]
   goals            Goal[]
   quizzes          Quiz[]
@@ -120,7 +127,16 @@ model Roadmap {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
   items RoadmapItem[]
+
+  @@index([workspaceId])
+  @@index([authorId])
 }
 
 model RoadmapItem {
@@ -138,12 +154,16 @@ model RoadmapItem {
   roadmapId String
   roadmap   Roadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
 
+  authorId String
+  author   User   @relation("RoadmapItemAuthor", fields: [authorId], references: [id])
+
   assigneeId String?
-  assignee   User?   @relation(fields: [assigneeId], references: [id])
+  assignee   User?   @relation("RoadmapItemAssignee", fields: [assigneeId], references: [id])
 
   tasks Task[]
 
   @@index([roadmapId, sortOrder])
+  @@index([authorId])
 }
 
 model Task {
@@ -166,9 +186,13 @@ model Task {
   roadmapItemId String?
   roadmapItem   RoadmapItem? @relation(fields: [roadmapItemId], references: [id])
 
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
   @@index([authorId])
   @@index([assigneeId])
   @@index([status, dueDate])
+  @@index([workspaceId])
 }
 
 model CheckIn {
@@ -212,10 +236,14 @@ model Quiz {
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
 
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
   questions QuizQuestion[]
   attempts  QuizAttempt[]
 
   @@index([authorId])
+  @@index([workspaceId])
 }
 
 model QuizQuestion {
@@ -265,8 +293,12 @@ model PracticeQuestion {
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
 
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
   @@index([topic, difficulty])
   @@index([authorId])
+  @@index([workspaceId])
 }
 
 model Marathon {
@@ -280,6 +312,11 @@ model Marathon {
   updatedAt   DateTime     @updatedAt
 
   sessions MarathonSession[]
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
 }
 
 model MarathonSession {
