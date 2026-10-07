@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { getInviteCode, regenerateInviteCode } from "@/server-actions/workspace";
+import { regenerateInviteCode } from "@/server-actions/workspace";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,9 +22,7 @@ export function InviteCodeCard({
   const [code, setCode] = useState(initialCode);
   const [copied, setCopied] = useState(false);
   const [state, regenerateAction, isRegenerating] = useActionState(
-    async (
-      _prev: { ok: boolean; error?: string; inviteCode?: string } | null,
-    ) => {
+    async () => {
       const result = await regenerateInviteCode();
       if (result.ok && result.data) {
         setCode(result.data.inviteCode);

@@ -11,9 +11,9 @@ AI cannot build everything at once. Each phase ends with a working, deployable a
 - [ ] Env vars in `.env.local`: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `GOOGLE_GENERATIVE_AI_API_KEY` — `DATABASE_URL` + `GOOGLE_GENERATIVE_AI_API_KEY` set locally; **still needed**: `AUTH_SECRET` (`npx auth secret`), `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` (Google Cloud OAuth client). Also add all four to Vercel → Settings → Environment Variables (DATABASE_URL is auto-injected there)
 
 ## Phase 1 — Core (planning + attendance + tracking + charts)
-- [ ] Auth.js Google provider; sign-in page; session callback; invite-code join; User.role
-- [ ] `lib/authz.ts`: `requireAdmin()`, `canEdit()`
-- [ ] Dashboard: today view — due tasks, streak counter, check-in button, goal rings, mini charts
+- [x] Auth.js Google provider; sign-in page; session callback; invite-code join; User.role — Google OAuth wired (`src/lib/auth.ts`), sign-in at `/sign-in`, first sign-in bootstraps the workspace + makes that user owner, later users join via 8-char invite code (`JoinWorkspaceForm`), session re-reads role/workspaceId from DB on every request
+- [x] `lib/authz.ts`: `requireAdmin()`, `canEdit()` — plus `requireMember()`; all return typed `{ ok, data } | { ok, error }` results per Rules.md
+- [ ] Dashboard: today view — due tasks, streak counter, check-in button, goal rings, mini charts (shell + invite-code card shipped; today view data next)
 - [ ] Roadmaps: CRUD, items with start/end dates, assignee, status, progress bar
 - [ ] Gantt timeline view (draggable bars to reschedule items)
 - [ ] Tasks: CRUD, filters (due/priority/assignee), deadline badges
