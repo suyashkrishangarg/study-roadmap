@@ -8,8 +8,6 @@ import {
 } from "@/lib/queries";
 import { FlashcardsPageClient } from "@/components/flashcards/flashcards-page-client";
 
-export const instant = false;
-
 function parseParam<T extends string>(
   value: string | string[] | undefined,
   allowed: readonly T[],

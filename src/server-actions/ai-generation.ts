@@ -45,23 +45,32 @@ export async function generateQuizFromTopic(input: {
   if (!topic) return { ok: false, error: "Topic is required." };
 
   const today = startOfDay(new Date());
-  const todaysCount = await prisma.quiz.count({
+  const todaysQuizCount = await prisma.quiz.count({
     where: { authorId: member.user.id, source: "ai", createdAt: { gte: today } },
   });
-  if (todaysCount >= AI_QUIZ_DAILY_CAP) {
+  if (todaysQuizCount >= AI_QUIZ_DAILY_CAP) {
     return {
       ok: false,
-      error: `Daily AI quiz limit reached (${AI_QUIZ_DAILY_CAP} per day). Try again tomorrow.`,
+      error: `Daily AI quiz limit reached (${AI_QUIZ_DAILY_CAP} quizzes per day). Try again tomorrow.`,
     };
   }
 
-  const { object } = await generateObject({
-    model: google("gemini-2.5-flash"),
-    schema: quizSchema,
-    prompt: `Generate a quiz on the topic "${topic}"${
-      input.notes ? ` based on these notes:\n${input.notes}` : ""
-    }. Requirements: mix of multiple choice, true/false and short answer questions. For mcq, provide 4 options and set answer to the exact option text. For true_false, answer must be "True" or "False". For short_answer, answer is the accepted response (keep it short). Add a brief explanation for each question.`,
-  });
+  let object: z.infer<typeof quizSchema>;
+  try {
+    ({ object } = await generateObject({
+      model: google("gemini-flash-lite-latest"),
+      schema: quizSchema,
+      prompt: `Generate a quiz on the topic "${topic}"${
+        input.notes ? ` based on these notes:\n${input.notes}` : ""
+      }. Requirements: mix of multiple choice, true/false and short answer questions. For mcq, provide 4 options and set answer to the exact option text. For true_false, answer must be "True" or "False". For short_answer, answer is the accepted response (keep it short). Add a brief explanation for each question.`,
+    }));
+  } catch (error) {
+    console.error("generateQuizFromTopic failed", error);
+    return {
+      ok: false,
+      error: "AI generation failed. Check the API key and try again.",
+    };
+  }
 
   const questions = object.questions
     .map((q, i) => ({
@@ -119,23 +128,33 @@ export async function generateFlashcards(input: {
   if (!topic) return { ok: false, error: "Topic is required." };
 
   const today = startOfDay(new Date());
-  const todaysCount = await prisma.flashcard.count({
+  const todaysFlashcardCount = await prisma.flashcard.count({
     where: { userId: member.user.id, createdAt: { gte: today } },
   });
-  if (todaysCount >= AI_FLASHCARD_DAILY_CAP) {
+  const todaysFlashcardSets = Math.ceil(todaysFlashcardCount / 10);
+  if (todaysFlashcardSets >= AI_FLASHCARD_DAILY_CAP) {
     return {
       ok: false,
-      error: `Daily AI flashcard limit reached (${AI_FLASHCARD_DAILY_CAP} per day). Try again tomorrow.`,
+      error: `Daily AI flashcard limit reached (${AI_FLASHCARD_DAILY_CAP} sets per day). Try again tomorrow.`,
     };
   }
 
-  const { object } = await generateObject({
-    model: google("gemini-2.5-flash"),
-    schema: flashcardSchema,
-    prompt: `Create flashcards on the topic "${topic}"${
-      input.notes ? ` based on these notes:\n${input.notes}` : ""
-    }. Each card: front = a question or term, back = the answer or definition. Keep both concise.`,
-  });
+  let object: z.infer<typeof flashcardSchema>;
+  try {
+    ({ object } = await generateObject({
+      model: google("gemini-flash-lite-latest"),
+      schema: flashcardSchema,
+      prompt: `Create flashcards on the topic "${topic}"${
+        input.notes ? ` based on these notes:\n${input.notes}` : ""
+      }. Each card: front = a question or term, back = the answer or definition. Keep both concise.`,
+    }));
+  } catch (error) {
+    console.error("generateFlashcards failed", error);
+    return {
+      ok: false,
+      error: "AI generation failed. Check the API key and try again.",
+    };
+  }
 
   const flashcards = await prisma.flashcard.createMany({
     data: object.cards.map((card) => ({

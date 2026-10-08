@@ -13,7 +13,6 @@ import { DueTasks } from "@/components/dashboard/due-tasks";
 import { GoalsCard } from "@/components/dashboard/goals-card";
 import { Clock, Fire, Target } from "@phosphor-icons/react/ssr";
 
-export const instant = false;
 
 function StatCard({
   icon: Icon,

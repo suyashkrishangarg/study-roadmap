@@ -3,7 +3,6 @@ import { getRoadmaps } from "@/lib/queries";
 import { redirect } from "next/navigation";
 import { RoadmapsPageClient } from "@/components/roadmaps/roadmaps-page-client";
 
-export const instant = false;
 
 export default async function RoadmapsPage() {
   const session = await auth();

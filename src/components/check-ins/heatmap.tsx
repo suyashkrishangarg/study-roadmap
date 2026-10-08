@@ -45,7 +45,7 @@ export function CheckInHeatmap({
                 <div
                   key={j}
                   className={cn("size-3 shrink-0 rounded-sm", cellClass(day.minutes))}
-                  title={`${day.date.toLocaleDateString(undefined, {
+                  title={`${day.date.toLocaleDateString("en-US", {
                     weekday: "short",
                     month: "short",
                     day: "numeric",

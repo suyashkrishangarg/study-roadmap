@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getQuiz, getQuizAttempts, getTopicAccuracy } from "@/lib/queries";
 import { QuizDetailClient } from "@/components/quizzes/quiz-detail-client";
 
-export const instant = false;
 
 export default async function QuizDetailPage({
   params,

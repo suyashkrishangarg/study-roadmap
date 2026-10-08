@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getQuizzes } from "@/lib/queries";
 import { QuizzesPageClient } from "@/components/quizzes/quizzes-page-client";
 
-export const instant = false;
 
 export default async function QuizzesPage() {
   const session = await auth();

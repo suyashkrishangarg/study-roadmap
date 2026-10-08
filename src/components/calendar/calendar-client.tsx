@@ -62,7 +62,7 @@ export function CalendarClient({
             <CaretLeft size={16} strokeWidth={1.5} aria-hidden="true" />
           </Button>
           <span className="min-w-36 text-center text-sm font-semibold">
-            {month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+            {month.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           </span>
           <Button variant="outline" size="icon-sm" onClick={() => shiftMonth(1)} aria-label="Next month">
             <CaretRight size={16} strokeWidth={1.5} aria-hidden="true" />

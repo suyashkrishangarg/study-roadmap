@@ -70,7 +70,7 @@ export function TimelineClient({ items }: { items: TimelineItem[] }) {
       if (m !== current) {
         current = m;
         spans.push({
-          label: d.toLocaleDateString(undefined, { month: "short", year: "numeric" }),
+          label: d.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
           start: i,
           width: 1,
         });
@@ -225,7 +225,7 @@ export function TimelineClient({ items }: { items: TimelineItem[] }) {
                         )}
                         style={{ width: DAY_WIDTH }}
                       >
-                        <span>{d.toLocaleDateString(undefined, { weekday: "narrow" })}</span>
+                        <span>{d.toLocaleDateString("en-US", { weekday: "narrow" })}</span>
                         <span>{d.getDate()}</span>
                       </div>
                     );

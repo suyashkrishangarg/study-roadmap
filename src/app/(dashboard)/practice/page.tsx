@@ -7,8 +7,6 @@ import {
 } from "@/lib/queries";
 import { PracticePageClient } from "@/components/practice/practice-page-client";
 
-export const instant = false;
-
 function parseParam<T extends string>(
   value: string | string[] | undefined,
   allowed: readonly T[],

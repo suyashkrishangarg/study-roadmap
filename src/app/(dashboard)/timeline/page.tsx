@@ -3,7 +3,6 @@ import { getTimeline } from "@/lib/queries";
 import { redirect } from "next/navigation";
 import { TimelineClient } from "@/components/timeline/timeline-client";
 
-export const instant = false;
 
 export default async function TimelinePage() {
   const session = await auth();

@@ -22,7 +22,7 @@ const typeIcon = {
 
 const typeHref = {
   deadline_approaching: "/tasks",
-  marathon_starting: "/timeline",
+  marathon_starting: "/marathons",
   quiz_graded: "/quizzes",
   system: "/",
 } as const;
@@ -36,7 +36,7 @@ function timeAgo(date: Date): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function NotificationBell({

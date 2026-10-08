@@ -36,7 +36,7 @@ export function CheckInHistory({
           <li key={key} className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">
-                {date.toLocaleDateString(undefined, {
+                {date.toLocaleDateString("en-US", {
                   weekday: "short",
                   month: "short",
                   day: "numeric",

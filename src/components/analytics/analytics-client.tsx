@@ -50,7 +50,8 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
     stroke: { width: 2 },
     fill: { opacity: 0.15 },
     legend: { position: "bottom" },
-    colors: ["#6366f1", "#22c55e"],
+    colors: ["#10b981", "#0ea5e9"],
+    theme: { mode: "light" },
     noData: { text: "No quiz or practice data yet" },
   };
 
@@ -78,7 +79,8 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
     dataLabels: { enabled: false },
     legend: { position: "bottom" },
     stroke: { width: [0, 0, 3] },
-    colors: ["#6366f1", "#f59e0b", "#22c55e"],
+    colors: ["#10b981", "#f59e0b", "#0ea5e9"],
+    theme: { mode: "light" },
     plotOptions: { bar: { columnWidth: "55%" } },
   };
 
@@ -92,7 +94,8 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
     yaxis: { title: { text: "Avg interval (days)" } },
     dataLabels: { enabled: true },
     stroke: { width: 3 },
-    colors: ["#8b5cf6"],
+    colors: ["#10b981"],
+    theme: { mode: "light" },
     markers: { size: 5 },
     noData: { text: "Review some flashcards to see the curve" },
   };

@@ -3,7 +3,6 @@ import { getRoadmap, getWorkspaceMembers } from "@/lib/queries";
 import { notFound, redirect } from "next/navigation";
 import { RoadmapDetailClient } from "@/components/roadmaps/roadmap-detail-client";
 
-export const instant = false;
 
 export default async function RoadmapDetailPage({
   params,

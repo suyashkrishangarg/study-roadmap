@@ -32,10 +32,12 @@ import { MarathonFormDialog } from "@/components/marathons/marathon-form-dialog"
 import { formatMinutes } from "@/lib/dates";
 import type { MarathonWithStats } from "@/lib/queries";
 
-function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
+function useNow(): Date | null {
+  const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
+    const update = () => setNow(new Date());
+    update();
+    const t = setInterval(update, 1000);
     return () => clearInterval(t);
   }, []);
   return now;
@@ -146,7 +148,7 @@ function MarathonCard({
   onDelete,
 }: {
   marathon: MarathonWithStats;
-  now: Date;
+  now: Date | null;
   canDelete: boolean;
   deleting: boolean;
   onDelete: () => void;
@@ -156,10 +158,10 @@ function MarathonCard({
   const loggedRef = useRef(0);
 
   const mySession = marathon.mySession;
-  const elapsedMs = mySession
-    ? now.getTime() - mySession.startedAt.getTime()
-    : 0;
-  const elapsedMin = Math.floor(elapsedMs / 60000);
+  const persistedMin = mySession?.minutes ?? 0;
+  const elapsedMs =
+    mySession && now ? now.getTime() - mySession.startedAt.getTime() : 0;
+  const elapsedMin = persistedMin + Math.floor(elapsedMs / 60000);
   const goalMin = marathon.goalMin ?? marathon.durationMin;
   const goalPct =
     goalMin > 0
@@ -169,7 +171,7 @@ function MarathonCard({
   const future =
     marathon.type === "scheduled" &&
     marathon.startsAt !== null &&
-    marathon.startsAt.getTime() > now.getTime();
+    (now ? marathon.startsAt.getTime() > now.getTime() : false);
 
   useEffect(() => {
     if (!mySession || elapsedMin <= loggedRef.current) return;
@@ -220,16 +222,18 @@ function MarathonCard({
               {marathon.type === "scheduled" && marathon.startsAt && (
                 <span className="flex items-center gap-1">
                   <Clock size={13} aria-hidden="true" />
-                  {future
-                    ? `${marathon.startsAt.toLocaleString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })} (${formatCountdown(
-                        marathon.startsAt.getTime() - now.getTime(),
-                      )})`
-                    : "Started"}
+                  {now
+                    ? future
+                      ? `${marathon.startsAt.toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })} (${formatCountdown(
+                          marathon.startsAt.getTime() - now.getTime(),
+                        )})`
+                      : "Started"
+                    : "…"}
                 </span>
               )}
               <span>

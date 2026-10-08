@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getAnalytics } from "@/lib/queries";
 import { AnalyticsClient } from "@/components/analytics/analytics-client";
 
-export const instant = false;
 
 export default async function AnalyticsPage() {
   const session = await auth();

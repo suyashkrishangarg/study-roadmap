@@ -151,7 +151,7 @@ Current workspace context:
 ${context}`;
 
   const result = streamText({
-    model: google("gemini-2.5-flash"),
+    model: google("gemini-flash-lite-latest"),
     system: systemPrompt,
     messages: messages as never,
     toolChoice: "auto",

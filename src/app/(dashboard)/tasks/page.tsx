@@ -3,8 +3,6 @@ import { getTasks, getWorkspaceMembers, type TaskFilters } from "@/lib/queries";
 import { redirect } from "next/navigation";
 import { TasksPageClient } from "@/components/tasks/tasks-page-client";
 
-export const instant = false;
-
 function parseParam<T extends string>(
   value: string | string[] | undefined,
   allowed: readonly T[],

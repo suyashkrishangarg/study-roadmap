@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getQuiz } from "@/lib/queries";
 import { TakeQuizClient } from "@/components/quizzes/take-quiz-client";
 
-export const instant = false;
 
 export default async function TakeQuizPage({
   params,

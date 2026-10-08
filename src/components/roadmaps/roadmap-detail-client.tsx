@@ -361,7 +361,7 @@ export function RoadmapDetailClient({
             </span>
             <span>
               {roadmap.startDate && roadmap.endDate
-                ? `${roadmap.startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${roadmap.endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                ? `${roadmap.startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${roadmap.endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
                 : "No dates set"}
             </span>
           </div>
@@ -404,7 +404,7 @@ export function RoadmapDetailClient({
                 <p className="truncate text-xs text-muted-foreground">
                   {memberName(item.assignee?.id)}
                   {item.startDate && item.endDate
-                    ? ` · ${item.startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${item.endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                    ? ` · ${item.startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${item.endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
                     : ""}
                 </p>
               </div>

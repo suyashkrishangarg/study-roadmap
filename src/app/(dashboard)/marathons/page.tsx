@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getMarathons } from "@/lib/queries";
 import { MarathonsPageClient } from "@/components/marathons/marathons-page-client";
 
-export const instant = false;
 
 export default async function MarathonsPage() {
   const session = await auth();

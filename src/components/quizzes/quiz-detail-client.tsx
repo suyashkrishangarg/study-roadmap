@@ -195,7 +195,7 @@ export function QuizDetailClient({
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {attempt.completedAt
-                              ? attempt.completedAt.toLocaleString(undefined, {
+                              ? attempt.completedAt.toLocaleString("en-US", {
                                   month: "short",
                                   day: "numeric",
                                   hour: "numeric",

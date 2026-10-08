@@ -29,7 +29,7 @@ export type RoadmapWithItems = Roadmap & {
 function dateRange(start: Date | null, end: Date | null) {
   if (!start && !end) return null;
   const fmt = (d: Date) =>
-    d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   if (start && end) return `${fmt(start)} – ${fmt(end)}`;
   if (start) return `From ${fmt(start)}`;
   return `Until ${fmt(end as Date)}`;

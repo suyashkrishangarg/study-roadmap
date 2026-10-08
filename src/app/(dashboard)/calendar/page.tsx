@@ -3,7 +3,6 @@ import { getCalendarEvents } from "@/lib/queries";
 import { redirect } from "next/navigation";
 import { CalendarClient } from "@/components/calendar/calendar-client";
 
-export const instant = false;
 
 export default async function CalendarPage({
   searchParams,

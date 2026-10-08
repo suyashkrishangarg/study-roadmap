@@ -1,12 +1,12 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getNotifications } from "@/lib/queries";
+import { ensureUpcomingNotifications } from "@/lib/notifications";
 import { SignOutButton } from "@/components/sign-out-button";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { GraduationCap } from "@phosphor-icons/react/ssr";
 
-export const instant = false;
 
 export default async function DashboardLayout({
   children,
@@ -17,6 +17,15 @@ export default async function DashboardLayout({
 
   if (!session?.user) {
     redirect("/sign-in");
+  }
+
+  if (session.user.workspaceId) {
+    await ensureUpcomingNotifications(
+      session.user.id,
+      session.user.workspaceId,
+    ).catch(() => {
+      // notifications are best-effort; never block the layout
+    });
   }
 
   const notifications = session.user.workspaceId

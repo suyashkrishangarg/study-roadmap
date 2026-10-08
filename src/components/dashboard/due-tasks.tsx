@@ -55,7 +55,7 @@ function dueLabel(dueDate: Date | null) {
   if (diff === 0) return { text: "Today", tone: "default" as const };
   if (diff === 1) return { text: "Tomorrow", tone: "secondary" as const };
   return {
-    text: due.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    text: due.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
     tone: "outline" as const,
   };
 }
