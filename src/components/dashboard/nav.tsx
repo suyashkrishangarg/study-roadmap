@@ -10,12 +10,12 @@ import {
   ChatCircleDots,
   CopySimple,
   Exam,
-  GearSix,
   Hourglass,
   House,
   ListChecks,
   MapTrifold,
   BookOpen,
+  Compass,
   Timer,
 } from "@phosphor-icons/react/ssr";
 
@@ -32,7 +32,7 @@ const links = [
   { href: "/marathons", label: "Marathons", icon: Hourglass, match: "/marathons" },
   { href: "/analytics", label: "Analytics", icon: ChartPie, match: "/analytics" },
   { href: "/assistant", label: "Assistant", icon: ChatCircleDots, match: "/assistant" },
-  { href: "/ai-settings", label: "AI Settings", icon: GearSix, match: "/ai-settings" },
+  { href: "/guide", label: "Guide", icon: Compass, match: "/guide" },
 ];
 
 export function DashboardNav() {

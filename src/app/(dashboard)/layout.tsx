@@ -1,10 +1,12 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ensureUpcomingNotifications } from "@/lib/notifications";
 import { SignOutButton } from "@/components/sign-out-button";
 import { DashboardNav } from "@/components/dashboard/nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { GraduationCap } from "@phosphor-icons/react/ssr";
+import { Button } from "@/components/ui/button";
+import { GraduationCap, ShieldCheck } from "@phosphor-icons/react/ssr";
 
 
 export default async function DashboardLayout({
@@ -29,6 +31,8 @@ export default async function DashboardLayout({
     });
   }
 
+  const isAdmin = session.user.role === "admin" || session.user.role === "owner";
+
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <header className="border-b border-border px-4 py-3 md:px-6">
@@ -44,6 +48,13 @@ export default async function DashboardLayout({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {session.user.workspaceId && <NotificationBell />}
+            {session.user.workspaceId && isAdmin && (
+              <Button variant="ghost" size="sm" className="h-8 w-8 px-0" asChild>
+                <Link href="/admin" aria-label="Admin console">
+                  <ShieldCheck size={16} strokeWidth={1.5} aria-hidden="true" />
+                </Link>
+              </Button>
+            )}
             <SignOutButton />
           </div>
         </div>

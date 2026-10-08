@@ -47,6 +47,26 @@ const toolLabels: Record<string, string> = {
   listQuizzes: "Listed quizzes",
   deleteRoadmap: "Deleted roadmap",
   deleteAllRoadmaps: "Deleted all roadmaps",
+  updateGoal: "Updated goal",
+  deleteGoal: "Deleted goal",
+  deleteCheckIn: "Deleted session",
+  deleteRoadmapItem: "Deleted roadmap item",
+  updatePracticeQuestion: "Updated question",
+  deletePracticeQuestion: "Deleted question",
+  setPracticeQuestionMastered: "Updated mastery",
+  createQuiz: "Created quiz",
+  deleteQuiz: "Deleted quiz",
+  gradeQuiz: "Graded quiz",
+  listMarathons: "Listed marathons",
+  createMarathon: "Created marathon",
+  deleteMarathon: "Deleted marathon",
+  listFlashcards: "Listed flashcards",
+  createFlashcard: "Created flashcard",
+  deleteFlashcard: "Deleted flashcard",
+  gradeFlashcard: "Graded flashcard",
+  listNotifications: "Listed notifications",
+  markAllNotificationsRead: "Cleared notifications",
+  listMembers: "Listed members",
 };
 
 const suggestions = [
@@ -105,6 +125,37 @@ function summarize(output: unknown): string | null {
       }
       if (parsed.logged)
         return `${parsed.subject} · ${parsed.durationMin} min`;
+      if (parsed.graded)
+        return `${parsed.score ?? ""}${parsed.score !== undefined ? "/" : ""}${parsed.total ?? ""} · ${parsed.pct ?? ""}${parsed.pct !== undefined ? "%" : ""}`;
+      if (parsed.nextDueInDays !== undefined)
+        return `Next due in ${parsed.nextDueInDays}d`;
+      if (parsed.count !== undefined && parsed.title === undefined)
+        return `${parsed.count} done`;
+      if (parsed.marathons) {
+        if (parsed.marathons.length === 0) return "No marathons";
+        return parsed.marathons
+          .slice(0, 3)
+          .map((m: { title?: string }) => m.title ?? "Untitled")
+          .join(" · ");
+      }
+      if (parsed.flashcards) {
+        if (parsed.flashcards.length === 0) return "No flashcards";
+        return parsed.flashcards
+          .slice(0, 3)
+          .map((f: { front?: string }) => f.front ?? "Untitled")
+          .join(" · ");
+      }
+      if (parsed.notifications) {
+        if (parsed.notifications.length === 0) return "No notifications";
+        return `${parsed.notifications.length} notification(s)`;
+      }
+      if (parsed.members) {
+        if (parsed.members.length === 0) return "No members";
+        return parsed.members
+          .slice(0, 3)
+          .map((m: { name?: string | null; email?: string }) => m.name ?? m.email ?? "Unnamed")
+          .join(" · ");
+      }
       if (parsed.tasks) {
         if (parsed.tasks.length === 0) return "No matching tasks";
         return parsed.tasks

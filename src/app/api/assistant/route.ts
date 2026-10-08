@@ -197,6 +197,11 @@ Domain rules:
 - The Timeline page is a READ-ONLY view of roadmap items (start/end dates). There is no separate "timeline" object: to change what the timeline shows, update the roadmap item dates; to clear the timeline, delete the roadmaps.
 - TRUTHFULNESS: only ever claim an action is done when its tool returned success. For deletes, state the exact count the tool reported (e.g. "Deleted 2 roadmaps"). Never say "removed all" unless the tool reported every item gone.
 - BULK DELETE SAFETY: "delete ALL roadmaps" requires the deleteAllRoadmaps tool with confirm DELETE. First reply asking for confirmation ("This will permanently delete N roadmaps... reply DELETE to confirm"), and only call the tool once the user confirms.
+- FULL POWER: you can manage EVERYTHING — tasks, roadmaps + items, check-ins, goals, practice questions, quizzes (create/delete/grade), flashcards (create/delete/grade with SM-2), marathons (create/delete), notifications, and member lookup. Prefer doing the thing over describing it.
+- QUIZ GRADING: to grade a quiz you need question ids — listQuizzes does NOT return questions. Either quiz the user interactively in chat (ask each question, collect answers, call gradeQuiz), or tell them to take it on the Quizzes page.
+- FLASHCARD GRADING: gradeFlashcard reschedules with SM-2; tell the user the next due interval.
+- MARATHON SESSIONS (join/log/finish) happen on the Marathons page timers — you create and delete marathons; you don't run live sessions.
+- ADMIN ACTIONS (roles, removing users, providers) live on the /admin page — you can look up members with listMembers, but role changes stay with human admins.
 
 Current workspace context:
 ${context}`;
@@ -213,7 +218,7 @@ ${context}`;
     model: resolved.model,
     system: systemPrompt,
     messages: await convertToModelMessages(messages as never),
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(8),
     toolChoice: "auto",
     tools: {
       getStudySummary: tool({
@@ -758,6 +763,32 @@ ${context}`;
         },
       }),
 
+      deleteRoadmapItem: tool({
+        description:
+          "Delete ONE roadmap item (a timeline bar) by id. Get the item id from listRoadmaps first. The timeline is a view of roadmap items — deleting the item removes its bar.",
+        inputSchema: z.object({ id: z.string().describe("Roadmap item id") }),
+        execute: async ({ id }) => {
+          const existing = await prisma.roadmapItem.findFirst({
+            where: { id, roadmap: { workspaceId } },
+            select: { id: true, title: true, roadmap: { select: { authorId: true } } },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Roadmap item ${id} not found.` });
+          }
+          if (
+            existing.roadmap.authorId !== userId &&
+            session.user.role !== "admin" &&
+            session.user.role !== "owner"
+          ) {
+            return JSON.stringify({
+              error: `You can only delete items in roadmaps you created (or ask an admin).`,
+            });
+          }
+          await prisma.roadmapItem.delete({ where: { id } });
+          return JSON.stringify({ deleted: true, title: existing.title });
+        },
+      }),
+
       updateRoadmapItem: tool({
         description:
           "Update a roadmap item's status, progress, dates, or assignee. Get the item id from listRoadmaps first.",
@@ -924,6 +955,22 @@ ${context}`;
         },
       }),
 
+      deleteCheckIn: tool({
+        description: "Delete a logged study session by id (fixes a wrongly logged session). Get the id from listCheckIns first. Only the user's own sessions.",
+        inputSchema: z.object({ id: z.string().describe("Check-in id") }),
+        execute: async ({ id }) => {
+          const existing = await prisma.checkIn.findFirst({
+            where: { id, userId },
+            select: { id: true, subject: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Check-in ${id} not found.` });
+          }
+          await prisma.checkIn.delete({ where: { id } });
+          return JSON.stringify({ deleted: true, title: existing.subject });
+        },
+      }),
+
       listGoals: tool({
         description: "List the user's study goals (daily/weekly minute targets). Takes no input.",
         inputSchema: z.object({
@@ -961,6 +1008,47 @@ ${context}`;
               goal.subject ? ` for ${goal.subject}` : ""
             }`,
           });
+        },
+      }),
+
+      updateGoal: tool({
+        description: "Change a goal's frequency, target minutes, or subject. Get the id from listGoals first.",
+        inputSchema: z.object({
+          id: z.string().describe("Goal id"),
+          frequency: z.enum(["daily", "weekly"]).optional(),
+          targetMin: z.number().int().min(1).max(10000).optional(),
+          subject: z.string().optional().describe("Subject focus (empty string clears it)"),
+        }),
+        execute: async (args) => {
+          const existing = await prisma.goal.findFirst({
+            where: { id: args.id, userId },
+            select: { id: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Goal ${args.id} not found.` });
+          }
+          const data: { frequency?: "daily" | "weekly"; targetMin?: number; subject?: string | null } = {};
+          if (args.frequency !== undefined) data.frequency = args.frequency;
+          if (args.targetMin !== undefined) data.targetMin = args.targetMin;
+          if (args.subject !== undefined) data.subject = args.subject.trim() || null;
+          await prisma.goal.update({ where: { id: args.id }, data });
+          return JSON.stringify({ updated: true, goal: "goal" });
+        },
+      }),
+
+      deleteGoal: tool({
+        description: "Delete a study goal by id. Get the id from listGoals first.",
+        inputSchema: z.object({ id: z.string().describe("Goal id") }),
+        execute: async ({ id }) => {
+          const existing = await prisma.goal.findFirst({
+            where: { id, userId },
+            select: { id: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Goal ${id} not found.` });
+          }
+          await prisma.goal.delete({ where: { id } });
+          return JSON.stringify({ deleted: true, title: "goal" });
         },
       }),
 
@@ -1025,6 +1113,172 @@ ${context}`;
         },
       }),
 
+      updatePracticeQuestion: tool({
+        description: "Edit a practice question's topic, difficulty, prompt, options, or solution. Get the id from listPracticeQuestions first. Author or admin only.",
+        inputSchema: z.object({
+          id: z.string().describe("Question id"),
+          topic: z.string().optional(),
+          difficulty: z.enum(["easy", "medium", "hard"]).optional(),
+          prompt: z.string().optional(),
+          options: z.array(z.string()).optional().describe("Answer options (empty clears)"),
+          solution: z.string().optional().describe("Solution text (empty clears)"),
+        }),
+        execute: async (args) => {
+          const existing = await prisma.practiceQuestion.findFirst({
+            where: { id: args.id, workspaceId },
+            select: { id: true, topic: true, authorId: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Question ${args.id} not found.` });
+          }
+          if (existing.authorId !== userId && session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({ error: "You can only edit questions you created (or ask an admin)." });
+          }
+          const data: Record<string, unknown> = {};
+          if (args.topic !== undefined) data.topic = args.topic.trim();
+          if (args.difficulty !== undefined) data.difficulty = args.difficulty;
+          if (args.prompt !== undefined) data.prompt = args.prompt.trim();
+          if (args.options !== undefined) data.options = args.options.length > 0 ? args.options : null;
+          if (args.solution !== undefined) data.solution = args.solution.trim() || null;
+          await prisma.practiceQuestion.update({ where: { id: args.id }, data: data as never });
+          return JSON.stringify({ updated: true, topic: existing.topic });
+        },
+      }),
+
+      deletePracticeQuestion: tool({
+        description: "Delete a practice question by id. Get the id from listPracticeQuestions first. Author or admin only.",
+        inputSchema: z.object({ id: z.string().describe("Question id") }),
+        execute: async ({ id }) => {
+          const existing = await prisma.practiceQuestion.findFirst({
+            where: { id, workspaceId },
+            select: { id: true, topic: true, authorId: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Question ${id} not found.` });
+          }
+          if (existing.authorId !== userId && session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({ error: "You can only delete questions you created (or ask an admin)." });
+          }
+          await prisma.practiceQuestion.delete({ where: { id } });
+          return JSON.stringify({ deleted: true, title: existing.topic });
+        },
+      }),
+
+      setPracticeQuestionMastered: tool({
+        description: "Mark a practice question mastered (or unmastered). Get the id from listPracticeQuestions first.",
+        inputSchema: z.object({
+          id: z.string().describe("Question id"),
+          mastered: z.boolean().describe("true = mastered, false = needs work"),
+        }),
+        execute: async ({ id, mastered }) => {
+          const existing = await prisma.practiceQuestion.findFirst({
+            where: { id, workspaceId },
+            select: { id: true, topic: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Question ${id} not found.` });
+          }
+          await prisma.practiceQuestion.update({ where: { id }, data: { mastered } });
+          return JSON.stringify({ updated: true, topic: existing.topic });
+        },
+      }),
+
+      createQuiz: tool({
+        description: "Create a full quiz with questions in one step (title + up to 10 questions). Each question: type mcq|true_false|short_answer, prompt, answer, options (4 for mcq), explanation. Call this when the user says 'make a quiz on X'.",
+        inputSchema: z.object({
+          title: z.string().min(1).max(200),
+          topic: z.string().optional(),
+          description: z.string().optional(),
+          questions: z.array(z.object({
+            type: z.enum(["mcq", "true_false", "short_answer"]),
+            prompt: z.string().min(1),
+            options: z.array(z.string()).optional().describe("4 options for mcq"),
+            answer: z.string().min(1).describe("Exact option text for mcq; True/False for true_false"),
+            explanation: z.string().optional(),
+          })).min(1).max(10),
+        }),
+        execute: async (args) => {
+          const questions = args.questions
+            .map((q, i) => ({
+              type: q.type,
+              prompt: q.prompt.trim(),
+              options: q.type === "mcq" && q.options && q.options.length > 0 ? q.options : undefined,
+              answer: q.answer.trim(),
+              explanation: q.explanation?.trim() || null,
+              sortOrder: i,
+            }))
+            .filter((q) => q.prompt && q.answer);
+          if (questions.length === 0) {
+            return JSON.stringify({ error: "Every question needs a prompt and an answer." });
+          }
+          const quiz = await prisma.quiz.create({
+            data: {
+              title: args.title.trim(),
+              description: args.description?.trim() || null,
+              topic: args.topic?.trim() || null,
+              source: "manual",
+              authorId: userId,
+              workspaceId,
+              questions: { create: questions as never },
+            },
+            select: { id: true, title: true },
+          });
+          return JSON.stringify({ created: true, id: quiz.id, title: quiz.title, questions: questions.length });
+        },
+      }),
+
+      deleteQuiz: tool({
+        description: "Delete a quiz (and its attempts) by id. Get the id from listQuizzes first. Author or admin only.",
+        inputSchema: z.object({ id: z.string().describe("Quiz id") }),
+        execute: async ({ id }) => {
+          const existing = await prisma.quiz.findFirst({
+            where: { id, workspaceId },
+            select: { id: true, title: true, authorId: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Quiz ${id} not found.` });
+          }
+          if (existing.authorId !== userId && session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({ error: "You can only delete quizzes you created (or ask an admin)." });
+          }
+          await prisma.quiz.delete({ where: { id } });
+          return JSON.stringify({ deleted: true, title: existing.title });
+        },
+      }),
+
+      gradeQuiz: tool({
+        description: "Grade a quiz attempt: give the quiz id plus the user's answers and get the score. Get the quiz id from listQuizzes first. IMPORTANT: fetch the questions via the quiz page data is not available — instead, ask the user each question in chat, collect answers, then grade here. Answers is an object of questionId->answer; use listQuizzes then ask. If you don't know question ids, say so and quiz interactively instead.",
+        inputSchema: z.object({
+          quizId: z.string().describe("Quiz id"),
+          answers: z.record(z.string(), z.string()).describe("Map of questionId to given answer"),
+        }),
+        execute: async ({ quizId, answers }) => {
+          const quiz = await prisma.quiz.findFirst({
+            where: { id: quizId, workspaceId },
+            include: { questions: { orderBy: { sortOrder: "asc" } } },
+          });
+          if (!quiz) {
+            return JSON.stringify({ error: `Quiz ${quizId} not found.` });
+          }
+          const norm = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "").replace(/\s+/g, " ").trim();
+          let score = 0;
+          const results = quiz.questions.map((q) => {
+            const given = (answers[q.id] ?? "").trim();
+            const g = norm(given);
+            const a = norm(q.answer);
+            const correct = q.type === "short_answer" ? (g !== "" && (g === a || a.includes(g))) : g !== "" && g === a;
+            if (correct) score++;
+            return { prompt: q.prompt, given, correctAnswer: q.answer, explanation: q.explanation, correct };
+          });
+          const total = quiz.questions.length;
+          const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+          await prisma.quizAttempt.create({
+            data: { quizId: quiz.id, userId, score, total, answers: answers as never, completedAt: new Date() },
+          });
+          return JSON.stringify({ graded: true, title: quiz.title, score, total, pct, results });
+        },
+      }),
+
       listQuizzes: tool({
         description: "List quizzes in the workspace with question and attempt counts. Takes no input.",
         inputSchema: z.object({
@@ -1046,6 +1300,207 @@ ${context}`;
           return JSON.stringify({ quizzes });
         },
       }),
+      listMarathons: tool({
+        description: "List study marathons in the workspace (title, type, start, duration). Takes no input.",
+        inputSchema: z.object({
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
+        execute: async () => {
+          const marathons = await prisma.marathon.findMany({
+            where: { workspaceId },
+            select: { id: true, title: true, type: true, startsAt: true, durationMin: true, goalMin: true },
+            orderBy: { createdAt: "desc" },
+            take: 15,
+          });
+          return JSON.stringify({ marathons });
+        },
+      }),
+
+      createMarathon: tool({
+        description: "Create a study marathon (a timed group focus session). scheduled needs a start date (YYYY-MM-DD); ondemand starts whenever. Duration 1-1440 min.",
+        inputSchema: z.object({
+          title: z.string().min(1).max(120),
+          type: z.enum(["scheduled", "ondemand"]),
+          startsAt: z.string().optional().describe("Start as FULL YYYY-MM-DD (scheduled only)"),
+          durationMin: z.number().int().min(1).max(1440),
+          goalMin: z.number().int().min(1).max(1440).optional(),
+        }),
+        execute: async (args) => {
+          let startsAt: Date | null = null;
+          if (args.type === "scheduled") {
+            if (!args.startsAt) return JSON.stringify({ error: "Scheduled marathons need a start date." });
+            const parsed = parseDateInput(args.startsAt);
+            if (!parsed) return JSON.stringify({ error: `Could not understand start date "${args.startsAt}".` });
+            startsAt = parsed;
+          }
+          const marathon = await prisma.marathon.create({
+            data: {
+              title: args.title.trim(),
+              type: args.type,
+              startsAt,
+              durationMin: args.durationMin,
+              goalMin: args.goalMin ?? null,
+              workspaceId,
+            },
+          });
+          return JSON.stringify({ created: true, id: marathon.id, title: marathon.title });
+        },
+      }),
+
+      deleteMarathon: tool({
+        description: "Delete a marathon by id. Get the id from listMarathons first. Admin only (mirrors the Marathons page).",
+        inputSchema: z.object({ id: z.string().describe("Marathon id") }),
+        execute: async ({ id }) => {
+          if (session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({ error: "Only admins can delete marathons." });
+          }
+          const existing = await prisma.marathon.findFirst({
+            where: { id, workspaceId },
+            select: { id: true, title: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Marathon ${id} not found.` });
+          }
+          await prisma.marathon.delete({ where: { id } });
+          return JSON.stringify({ deleted: true, title: existing.title });
+        },
+      }),
+
+      listFlashcards: tool({
+        description: "List the user's flashcards (front, back, topic, due date). Optionally filter by topic. Flashcards are personal to the user.",
+        inputSchema: z.object({
+          topic: z.string().optional(),
+        }),
+        execute: async ({ topic }) => {
+          const cards = await prisma.flashcard.findMany({
+            where: { userId, ...(topic ? { topic: { contains: topic, mode: "insensitive" } } : {}) },
+            select: { id: true, front: true, back: true, topic: true, dueDate: true, repetitions: true },
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          });
+          return JSON.stringify({ flashcards: cards });
+        },
+      }),
+
+      createFlashcard: tool({
+        description: "Create one flashcard (front = question/term, back = answer/definition), optionally tagged with a topic.",
+        inputSchema: z.object({
+          front: z.string().min(1),
+          back: z.string().min(1),
+          topic: z.string().optional(),
+        }),
+        execute: async (args) => {
+          const card = await prisma.flashcard.create({
+            data: {
+              front: args.front.trim(),
+              back: args.back.trim(),
+              topic: args.topic?.trim() || null,
+              userId,
+            },
+          });
+          return JSON.stringify({ created: true, id: card.id, front: card.front });
+        },
+      }),
+
+      deleteFlashcard: tool({
+        description: "Delete a flashcard by id. Get the id from listFlashcards first. Only the user's own cards.",
+        inputSchema: z.object({ id: z.string().describe("Flashcard id") }),
+        execute: async ({ id }) => {
+          const existing = await prisma.flashcard.findFirst({
+            where: { id, userId },
+            select: { id: true, front: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Flashcard ${id} not found.` });
+          }
+          await prisma.flashcard.delete({ where: { id } });
+          return JSON.stringify({ deleted: true, title: existing.front });
+        },
+      }),
+
+      gradeFlashcard: tool({
+        description: "Grade a flashcard review (again/hard/good/easy) — reschedules it with SM-2 spaced repetition. Get the id from listFlashcards first.",
+        inputSchema: z.object({
+          id: z.string().describe("Flashcard id"),
+          grade: z.enum(["again", "hard", "good", "easy"]),
+        }),
+        execute: async ({ id, grade }) => {
+          const existing = await prisma.flashcard.findFirst({
+            where: { id, userId },
+            select: { id: true, front: true, easeFactor: true, intervalDays: true, repetitions: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Flashcard ${id} not found.` });
+          }
+          let easeFactor = existing.easeFactor;
+          let intervalDays = existing.intervalDays;
+          let repetitions = existing.repetitions;
+          if (grade === "again") {
+            repetitions = 0;
+            intervalDays = 1;
+          } else {
+            repetitions += 1;
+            if (repetitions === 1) intervalDays = 1;
+            else if (repetitions === 2) intervalDays = 6;
+            else intervalDays = Math.round(intervalDays * easeFactor);
+            const adj = grade === "hard" ? -0.15 : grade === "easy" ? 0.15 : 0;
+            easeFactor = Math.min(3.0, Math.max(1.3, easeFactor + adj));
+          }
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + intervalDays);
+          await prisma.flashcard.update({
+            where: { id },
+            data: { easeFactor, intervalDays, repetitions, dueDate, lastReviewedAt: new Date() },
+          });
+          return JSON.stringify({ graded: true, title: existing.front, nextDueInDays: intervalDays });
+        },
+      }),
+
+      listNotifications: tool({
+        description: "List the user's notifications (deadlines, marathons, quiz grades). Takes no input.",
+        inputSchema: z.object({
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
+        execute: async () => {
+          const notifications = await prisma.notification.findMany({
+            where: { userId },
+            select: { id: true, type: true, title: true, body: true, readAt: true, createdAt: true },
+            orderBy: { createdAt: "desc" },
+            take: 15,
+          });
+          return JSON.stringify({ notifications });
+        },
+      }),
+
+      markAllNotificationsRead: tool({
+        description: "Mark all the user's notifications as read. Takes no input.",
+        inputSchema: z.object({
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
+        execute: async () => {
+          const result = await prisma.notification.updateMany({
+            where: { userId, readAt: null },
+            data: { readAt: new Date() },
+          });
+          return JSON.stringify({ updated: true, count: result.count });
+        },
+      }),
+
+      listMembers: tool({
+        description: "List workspace members (name, email, role). Use to resolve who to assign things to. Takes no input.",
+        inputSchema: z.object({
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
+        execute: async () => {
+          const members = await prisma.user.findMany({
+            where: { workspaceId },
+            select: { id: true, name: true, email: true, role: true },
+            orderBy: { name: "asc" },
+          });
+          return JSON.stringify({ members });
+        },
+      }),
+
     },
     onFinish: async ({ text }) => {
       try {
