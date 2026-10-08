@@ -166,9 +166,9 @@ export function TimelineClient({ items }: { items: TimelineItem[] }) {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card">
-          <div className="flex">
+          <div className="flex min-w-max">
             <div
-              className="sticky left-0 z-10 shrink-0 border-r bg-background"
+              className="sticky left-0 z-30 shrink-0 border-r bg-card"
               style={{ width: LABEL_WIDTH }}
             >
               <div

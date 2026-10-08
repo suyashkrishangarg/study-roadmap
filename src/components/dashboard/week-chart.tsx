@@ -50,18 +50,18 @@ export function WeekChart({
                 allowDecimals={false}
               />
               <Tooltip
-                cursor={{ fill: "hsl(var(--muted))" }}
+                cursor={{ fill: "var(--muted)" }}
                 contentStyle={{
                   borderRadius: 8,
-                  border: "1px solid hsl(var(--border))",
-                  background: "hsl(var(--card))",
+                  border: "1px solid var(--border)",
+                  background: "var(--card)",
                   fontSize: 12,
                 }}
                 formatter={(value) => [`${value} min`, "Studied"]}
               />
               <Bar
                 dataKey="minutes"
-                fill="hsl(var(--primary))"
+                fill="var(--primary)"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={32}
               />

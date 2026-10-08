@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { google } from "@ai-sdk/google";
-import { streamText, tool } from "ai";
+import { convertToModelMessages, stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
 
 export const maxDuration = 30;
@@ -153,13 +153,16 @@ ${context}`;
   const result = streamText({
     model: google("gemini-flash-lite-latest"),
     system: systemPrompt,
-    messages: messages as never,
+    messages: await convertToModelMessages(messages as never),
+    stopWhen: stepCountIs(5),
     toolChoice: "auto",
     tools: {
       getStudySummary: tool({
         description:
-          "Get the user's study stats: today's minutes, streak, active goals, and tasks due soon.",
-        inputSchema: z.object({}),
+          "Get the user's study stats: today's minutes, streak, active goals, and tasks due soon. Takes no input.",
+        inputSchema: z.object({
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
         execute: async () => {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -382,8 +385,10 @@ ${context}`;
 
       listRoadmaps: tool({
         description:
-          "List roadmaps with their items (title, status, progress, dates).",
-        inputSchema: z.object({}),
+          "List roadmaps with their items (title, status, progress, dates). Takes no input.",
+        inputSchema: z.object({
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
         execute: async () => {
           const roadmaps = await prisma.roadmap.findMany({
             where: { workspaceId },
@@ -701,8 +706,10 @@ ${context}`;
       }),
 
       listGoals: tool({
-        description: "List the user's study goals (daily/weekly minute targets).",
-        inputSchema: z.object({}),
+        description: "List the user's study goals (daily/weekly minute targets). Takes no input.",
+        inputSchema: z.object({
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
         execute: async () => {
           const goals = await prisma.goal.findMany({
             where: { userId },
@@ -800,8 +807,10 @@ ${context}`;
       }),
 
       listQuizzes: tool({
-        description: "List quizzes in the workspace with question and attempt counts.",
-        inputSchema: z.object({}),
+        description: "List quizzes in the workspace with question and attempt counts. Takes no input.",
+        inputSchema: z.object({
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
         execute: async () => {
           const quizzes = await prisma.quiz.findMany({
             where: { workspaceId },
@@ -828,11 +837,13 @@ ${context}`;
               typeof m === "object" &&
               m !== null &&
               (m as { role?: string }).role === "user",
-          ) as { content?: unknown } | undefined;
+          ) as { parts?: { type?: string; text?: string }[] } | undefined;
         const userContent =
-          typeof lastUserMessage?.content === "string"
-            ? lastUserMessage.content
-            : null;
+          lastUserMessage?.parts
+            ?.filter((p) => p.type === "text" && typeof p.text === "string")
+            .map((p) => p.text as string)
+            .join("\n")
+            .slice(0, 4000) ?? null;
         if (userContent) {
           await prisma.aIMessage.create({
             data: { userId, role: "user", content: userContent.slice(0, 4000) },

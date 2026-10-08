@@ -45,8 +45,8 @@ export function TaskTrendChart({
             <AreaChart data={data} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
               <defs>
                 <linearGradient id="taskFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                  <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -64,11 +64,11 @@ export function TaskTrendChart({
                 allowDecimals={false}
               />
               <Tooltip
-                cursor={{ stroke: "hsl(var(--border))" }}
+                cursor={{ stroke: "var(--border)" }}
                 contentStyle={{
                   borderRadius: 8,
-                  border: "1px solid hsl(var(--border))",
-                  background: "hsl(var(--card))",
+                  border: "1px solid var(--border)",
+                  background: "var(--card)",
                   fontSize: 12,
                 }}
                 formatter={(value) => [`${value} tasks`, "Completed"]}
@@ -76,7 +76,7 @@ export function TaskTrendChart({
               <Area
                 type="monotone"
                 dataKey="completed"
-                stroke="hsl(var(--primary))"
+                stroke="var(--primary)"
                 strokeWidth={2}
                 fill="url(#taskFill)"
               />

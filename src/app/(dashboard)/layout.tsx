@@ -34,21 +34,23 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3 md:px-6">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap size={18} strokeWidth={1.5} aria-hidden="true" />
+      <header className="border-b border-border px-4 py-3 md:px-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex shrink-0 items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <GraduationCap size={18} strokeWidth={1.5} aria-hidden="true" />
+              </div>
+              <span className="text-lg font-semibold tracking-tight">Study</span>
             </div>
-            <span className="text-lg font-semibold tracking-tight">Study</span>
+            {session.user.workspaceId && <DashboardNav />}
           </div>
-          {session.user.workspaceId && <DashboardNav />}
-        </div>
-        <div className="flex items-center gap-1">
-          {session.user.workspaceId && notifications && (
-            <NotificationBell initialNotifications={notifications} />
-          )}
-          <SignOutButton />
+          <div className="flex shrink-0 items-center gap-1">
+            {session.user.workspaceId && notifications && (
+              <NotificationBell initialNotifications={notifications} />
+            )}
+            <SignOutButton />
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6">

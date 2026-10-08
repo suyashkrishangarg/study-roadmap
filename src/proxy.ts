@@ -10,6 +10,9 @@ export default auth((req) => {
     pathname.startsWith("/api/auth/");
 
   if (!isPublic && !req.auth) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 

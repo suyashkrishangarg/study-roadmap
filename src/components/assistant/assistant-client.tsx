@@ -266,9 +266,19 @@ export function AssistantClient() {
           </div>
         )}
         {error && (
-          <p className="text-sm text-destructive" role="alert">
-            {error.message}
-          </p>
+          <div
+            className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm"
+            role="alert"
+          >
+            <p className="font-medium text-destructive">
+              Something went wrong.
+            </p>
+            <p className="break-words text-muted-foreground">{error.message}</p>
+            <p className="text-xs text-muted-foreground">
+              If this keeps happening, check that the Gemini API key is set on
+              the server and try again.
+            </p>
+          </div>
         )}
       </div>
 
