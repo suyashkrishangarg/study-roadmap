@@ -1,9 +1,13 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { google } from "@ai-sdk/google";
 import { convertToModelMessages, stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
-import { DEFAULT_AI_MODEL, isAiModelId } from "@/lib/ai-models";
+import {
+  DEFAULT_MODEL_ID,
+  isModelId,
+  normalizeModelId,
+  resolveModel,
+} from "@/lib/ai-models";
 
 export const maxDuration = 30;
 
@@ -190,12 +194,23 @@ Domain rules:
 - Roadmaps are long-term plans. Items have a title, status, progress (0-100), and optional start/end dates.
 - Practice questions are a bank of questions with topic, difficulty, prompt, options, and solution.
 - Quizzes are graded assessments users take on the Quizzes page.
+- The Timeline page is a READ-ONLY view of roadmap items (start/end dates). There is no separate "timeline" object: to change what the timeline shows, update the roadmap item dates; to clear the timeline, delete the roadmaps.
+- TRUTHFULNESS: only ever claim an action is done when its tool returned success. For deletes, state the exact count the tool reported (e.g. "Deleted 2 roadmaps"). Never say "removed all" unless the tool reported every item gone.
+- BULK DELETE SAFETY: "delete ALL roadmaps" requires the deleteAllRoadmaps tool with confirm DELETE. First reply asking for confirmation ("This will permanently delete N roadmaps... reply DELETE to confirm"), and only call the tool once the user confirms.
 
 Current workspace context:
 ${context}`;
 
+  const requested = isModelId(body.model)
+    ? normalizeModelId(body.model)
+    : DEFAULT_MODEL_ID;
+  const resolved = await resolveModel(requested);
+  if (!resolved.ok) {
+    return new Response(resolved.error, { status: 400 });
+  }
+
   const result = streamText({
-    model: google(isAiModelId(body.model) ? body.model : DEFAULT_AI_MODEL),
+    model: resolved.model,
     system: systemPrompt,
     messages: await convertToModelMessages(messages as never),
     stopWhen: stepCountIs(5),
@@ -449,6 +464,63 @@ ${context}`;
           }
           await prisma.task.delete({ where: { id } });
           return JSON.stringify({ deleted: true, title: existing.title });
+        },
+      }),
+
+      deleteRoadmap: tool({
+        description:
+          "Delete ONE roadmap by id (its timeline items go with it). Get the id from listRoadmaps first. NEVER claim you deleted roadmaps until this tool returns deleted:true.",
+        inputSchema: z.object({ id: z.string().describe("Roadmap id") }),
+        execute: async ({ id }) => {
+          const existing = await prisma.roadmap.findFirst({
+            where: { id, workspaceId },
+            select: { id: true, title: true, authorId: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Roadmap ${id} not found.` });
+          }
+          if (existing.authorId !== userId && session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({
+              error: `You can only delete roadmaps you created (or ask an admin). "${existing.title}" was created by someone else.`,
+            });
+          }
+          await prisma.roadmap.delete({ where: { id } });
+          return JSON.stringify({ deleted: true, title: existing.title });
+        },
+      }),
+
+      deleteAllRoadmaps: tool({
+        description:
+          "Delete EVERY roadmap in the workspace (timeline items go with them). Use ONLY when the user explicitly asks to delete ALL roadmaps. There is no undo — confirm first in plain words.",
+        inputSchema: z.object({
+          confirm: z.string().describe("Echo the word DELETE to confirm bulk deletion."),
+          _unused: z.string().optional().describe("Unused. Omit this field."),
+        }),
+        execute: async ({ confirm }) => {
+          if (confirm !== "DELETE") {
+            return JSON.stringify({
+              error: "Bulk delete needs confirm:DELETE. Ask the user to confirm first.",
+            });
+          }
+          const all = await prisma.roadmap.findMany({
+            where: { workspaceId },
+            select: { id: true, title: true, authorId: true },
+          });
+          const isAdmin = session.user.role === "admin" || session.user.role === "owner";
+          const deletable = all.filter((r) => isAdmin || r.authorId === userId);
+          if (deletable.length === 0) {
+            return JSON.stringify({
+              error: "No roadmaps you are allowed to delete were found.",
+            });
+          }
+          await prisma.roadmap.deleteMany({
+            where: { id: { in: deletable.map((r) => r.id) } },
+          });
+          return JSON.stringify({
+            deleted: true,
+            count: deletable.length,
+            skipped: all.length - deletable.length,
+          });
         },
       }),
 

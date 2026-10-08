@@ -1,12 +1,16 @@
 "use server";
 
 import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireMember, type ActionResult } from "@/lib/authz";
 import { startOfDay } from "@/lib/dates";
-import { DEFAULT_AI_MODEL } from "@/lib/ai-models";
+import {
+  DEFAULT_MODEL_ID,
+  isModelId,
+  normalizeModelId,
+  resolveModel,
+} from "@/lib/ai-models";
 import {
   Prisma,
   type Flashcard,
@@ -38,12 +42,17 @@ export type GeneratedQuiz = Quiz & { questions: QuizQuestion[] };
 export async function generateQuizFromTopic(input: {
   topic: string;
   notes?: string | null;
+  model?: string;
 }): Promise<ActionResult<GeneratedQuiz>> {
   const member = await requireMember();
   if (!member.ok) return { ok: false, error: member.error };
 
   const topic = input.topic.trim();
   if (!topic) return { ok: false, error: "Topic is required." };
+
+  const requested = isModelId(input.model) ? normalizeModelId(input.model) : DEFAULT_MODEL_ID;
+  const resolved = await resolveModel(requested);
+  if (!resolved.ok) return { ok: false, error: resolved.error };
 
   const today = startOfDay(new Date());
   const todaysQuizCount = await prisma.quiz.count({
@@ -59,7 +68,7 @@ export async function generateQuizFromTopic(input: {
   let object: z.infer<typeof quizSchema>;
   try {
     ({ object } = await generateObject({
-      model: google(DEFAULT_AI_MODEL),
+      model: resolved.model,
       schema: quizSchema,
       prompt: `Generate a quiz on the topic "${topic}"${
         input.notes ? ` based on these notes:\n${input.notes}` : ""
@@ -121,12 +130,17 @@ const flashcardSchema = z.object({
 export async function generateFlashcards(input: {
   topic: string;
   notes?: string | null;
+  model?: string;
 }): Promise<ActionResult<Flashcard[]>> {
   const member = await requireMember();
   if (!member.ok) return { ok: false, error: member.error };
 
   const topic = input.topic.trim();
   if (!topic) return { ok: false, error: "Topic is required." };
+
+  const requested = isModelId(input.model) ? normalizeModelId(input.model) : DEFAULT_MODEL_ID;
+  const resolved = await resolveModel(requested);
+  if (!resolved.ok) return { ok: false, error: resolved.error };
 
   const today = startOfDay(new Date());
   const todaysFlashcardCount = await prisma.flashcard.count({
@@ -143,7 +157,7 @@ export async function generateFlashcards(input: {
   let object: z.infer<typeof flashcardSchema>;
   try {
     ({ object } = await generateObject({
-      model: google(DEFAULT_AI_MODEL),
+      model: resolved.model,
       schema: flashcardSchema,
       prompt: `Create flashcards on the topic "${topic}"${
         input.notes ? ` based on these notes:\n${input.notes}` : ""

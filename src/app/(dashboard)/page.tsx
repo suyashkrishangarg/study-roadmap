@@ -7,8 +7,8 @@ import { redirect } from "next/navigation";
 import { JoinWorkspaceForm } from "@/components/join-workspace-form";
 import { InviteCodeCard } from "@/components/invite-code-card";
 import { CheckInForm } from "@/components/check-in-form";
-import { WeekChart } from "@/components/dashboard/week-chart";
-import { TaskTrendChart } from "@/components/dashboard/task-trend-chart";
+import { WeekChartLazy } from "@/components/dashboard/week-chart-lazy";
+import { TaskTrendChartLazy } from "@/components/dashboard/task-trend-chart-lazy";
 import { DueTasks } from "@/components/dashboard/due-tasks";
 import { GoalsCard } from "@/components/dashboard/goals-card";
 import { Clock, Fire, Target } from "@phosphor-icons/react/ssr";
@@ -104,8 +104,8 @@ export default async function DashboardPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="flex flex-col gap-6 lg:col-span-2">
-            <WeekChart data={data.week} />
-            <TaskTrendChart data={data.taskTrend} />
+            <WeekChartLazy data={data.week} />
+            <TaskTrendChartLazy data={data.taskTrend} />
             <DueTasks tasks={data.dueTasks} currentUserId={session.user.id} />
           </div>
         <div className="flex flex-col gap-6">

@@ -10,6 +10,7 @@ import {
   ChatCircleDots,
   CopySimple,
   Exam,
+  GearSix,
   Hourglass,
   House,
   ListChecks,
@@ -31,6 +32,7 @@ const links = [
   { href: "/marathons", label: "Marathons", icon: Hourglass, match: "/marathons" },
   { href: "/analytics", label: "Analytics", icon: ChartPie, match: "/analytics" },
   { href: "/assistant", label: "Assistant", icon: ChatCircleDots, match: "/assistant" },
+  { href: "/ai-settings", label: "AI Settings", icon: GearSix, match: "/ai-settings" },
 ];
 
 export function DashboardNav() {

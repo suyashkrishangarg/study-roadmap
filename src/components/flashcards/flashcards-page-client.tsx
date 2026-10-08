@@ -26,6 +26,8 @@ import {
 import { generateFlashcards } from "@/server-actions/ai-generation";
 import { FlashcardFormDialog } from "@/components/flashcards/flashcard-form-dialog";
 import { ReviewSession } from "@/components/flashcards/review-session";
+import { ModelPicker } from "@/components/ai/model-picker";
+import { DEFAULT_MODEL_ID } from "@/lib/ai-models";
 import type { Flashcard } from "@prisma/client";
 import type { FlashcardStats } from "@/lib/queries";
 
@@ -48,6 +50,7 @@ export function FlashcardsPageClient({
   const [formOpen, setFormOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [aiTopic, setAiTopic] = useState("");
+  const [aiModel, setAiModel] = useState<string>(DEFAULT_MODEL_ID);
   const [aiPending, setAiPending] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -78,7 +81,7 @@ export function FlashcardsPageClient({
     }
     setAiPending(true);
     setAiError(null);
-    const result = await generateFlashcards({ topic });
+    const result = await generateFlashcards({ topic, model: aiModel });
     setAiPending(false);
     if (result.ok) {
       setAiTopic("");
@@ -178,7 +181,9 @@ export function FlashcardsPageClient({
                 maxLength={120}
                 className="w-44"
                 autoComplete="off"
+                aria-label="AI flashcard topic"
               />
+              <ModelPicker value={aiModel} onChange={setAiModel} id="flashcard-ai-model" />
               <Button
                 variant="outline"
                 size="sm"

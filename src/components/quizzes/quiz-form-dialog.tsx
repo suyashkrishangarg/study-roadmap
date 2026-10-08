@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ModelPicker } from "@/components/ai/model-picker";
+import { DEFAULT_MODEL_ID } from "@/lib/ai-models";
 import {
   Dialog,
   DialogContent,
@@ -99,6 +101,7 @@ export function QuizFormDialog({
 
   const [aiTopic, setAiTopic] = useState("");
   const [aiNotes, setAiNotes] = useState("");
+  const [aiModel, setAiModel] = useState<string>(DEFAULT_MODEL_ID);
   const [aiPending, setAiPending] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -176,7 +179,7 @@ export function QuizFormDialog({
     }
     setAiPending(true);
     setAiError(null);
-    const result = await generateQuizFromTopic({ topic: t, notes: aiNotes });
+    const result = await generateQuizFromTopic({ topic: t, notes: aiNotes, model: aiModel });
     setAiPending(false);
     if (!result.ok) {
       setAiError(result.error);
@@ -330,6 +333,10 @@ export function QuizFormDialog({
                   maxLength={2000}
                   placeholder="Paste class notes to base the quiz on"
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Model</span>
+                <ModelPicker value={aiModel} onChange={setAiModel} id="quiz-ai-model" />
               </div>
               {aiError && (
                 <p className="text-sm text-destructive" role="alert">

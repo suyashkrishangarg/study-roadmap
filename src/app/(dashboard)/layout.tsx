@@ -1,6 +1,5 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getNotifications } from "@/lib/queries";
 import { ensureUpcomingNotifications } from "@/lib/notifications";
 import { SignOutButton } from "@/components/sign-out-button";
 import { DashboardNav } from "@/components/dashboard/nav";
@@ -30,10 +29,6 @@ export default async function DashboardLayout({
     });
   }
 
-  const notifications = session.user.workspaceId
-    ? await getNotifications()
-    : [];
-
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <header className="border-b border-border px-4 py-3 md:px-6">
@@ -48,9 +43,7 @@ export default async function DashboardLayout({
             {session.user.workspaceId && <DashboardNav />}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {session.user.workspaceId && notifications && (
-              <NotificationBell initialNotifications={notifications} />
-            )}
+            {session.user.workspaceId && <NotificationBell />}
             <SignOutButton />
           </div>
         </div>

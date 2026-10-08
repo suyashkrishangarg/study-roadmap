@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
@@ -12,6 +12,7 @@ import {
   markNotificationRead,
 } from "@/server-actions/notifications";
 import type { Notification } from "@prisma/client";
+import { getBellNotifications } from "@/server-actions/bell";
 
 const typeIcon = {
   deadline_approaching: Clock,
@@ -42,10 +43,20 @@ function timeAgo(date: Date): string {
 export function NotificationBell({
   initialNotifications,
 }: {
-  initialNotifications: Notification[];
+  initialNotifications?: Notification[] | null;
 }) {
-  const [notifications, setNotifications] = useState(initialNotifications);
-  const [prevInitial, setPrevInitial] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications ?? []);
+  const [prevInitial, setPrevInitial] = useState(initialNotifications ?? null);
+  useEffect(() => {
+    if (initialNotifications !== undefined) return;
+    let live = true;
+    getBellNotifications().then((result) => {
+      if (live && result.ok) setNotifications(result.data);
+    });
+    return () => {
+      live = false;
+    };
+  }, [initialNotifications]);
   const [markAllState, markAllAction, markAllPending] = useActionState(
     async (): Promise<{ ok: boolean; error?: string }> => {
       const result = await markAllNotificationsRead();
@@ -58,9 +69,9 @@ export function NotificationBell({
   );
   const router = useRouter();
 
-  if (initialNotifications !== prevInitial) {
-    setNotifications(initialNotifications);
-    setPrevInitial(initialNotifications);
+  if (initialNotifications !== undefined && initialNotifications !== prevInitial) {
+    setNotifications(initialNotifications ?? []);
+    setPrevInitial(initialNotifications ?? null);
   }
 
   const unread = notifications.filter((n) => !n.readAt).length;

@@ -23,15 +23,9 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "cn";
-import { AI_MODELS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
+import { ModelPicker } from "@/components/ai/model-picker";
+import { DEFAULT_MODEL_ID } from "@/lib/ai-models";
 
 const toolLabels: Record<string, string> = {
   getStudySummary: "Study summary",
@@ -51,6 +45,8 @@ const toolLabels: Record<string, string> = {
   listPracticeQuestions: "Listed practice questions",
   createPracticeQuestion: "Added practice question",
   listQuizzes: "Listed quizzes",
+  deleteRoadmap: "Deleted roadmap",
+  deleteAllRoadmaps: "Deleted all roadmaps",
 };
 
 const suggestions = [
@@ -96,7 +92,17 @@ function summarize(output: unknown): string | null {
         );
       }
       if (parsed.updated) return parsed.title ?? "Updated";
-      if (parsed.deleted) return parsed.title ?? "Deleted";
+      if (parsed.deleted) {
+        if (typeof parsed.count === "number")
+          return (
+            "Deleted " +
+            parsed.count +
+            " roadmap" +
+            (parsed.count === 1 ? "" : "s") +
+            (parsed.skipped ? " (" + parsed.skipped + " not yours)" : "")
+          );
+        return parsed.title ?? "Deleted";
+      }
       if (parsed.logged)
         return `${parsed.subject} · ${parsed.durationMin} min`;
       if (parsed.tasks) {
@@ -144,6 +150,16 @@ function summarize(output: unknown): string | null {
   return null;
 }
 
+const READ_ONLY_TOOLS = new Set([
+  "getStudySummary",
+  "listTasks",
+  "listRoadmaps",
+  "listCheckIns",
+  "listGoals",
+  "listPracticeQuestions",
+  "listQuizzes",
+]);
+
 function ToolCard({ part }: { part: ToolCardPart }) {
   const [expanded, setExpanded] = useState(false);
   const label = toolLabels[part.toolName] ?? part.toolName;
@@ -151,6 +167,7 @@ function ToolCard({ part }: { part: ToolCardPart }) {
   const done = state === "output-available";
   const failed = state === "output-error";
   const summary = done ? summarize(part.output) : null;
+  const quiet = done && READ_ONLY_TOOLS.has(part.toolName);
 
   // Collapsed by default once finished: the summary line is the UI.
   // Raw input/output JSON stays available behind the expander for debugging,
@@ -181,13 +198,13 @@ function ToolCard({ part }: { part: ToolCardPart }) {
             {part.errorText}
           </span>
         )}
-        {expanded ? (
+        {quiet ? null : expanded ? (
           <CaretDown size={14} className="shrink-0 text-muted-foreground" aria-hidden="true" />
         ) : (
           <CaretRight size={14} className="shrink-0 text-muted-foreground" aria-hidden="true" />
         )}
       </button>
-      {expanded && (
+      {!quiet && expanded && (
         <pre className="max-h-48 overflow-auto border-t border-border px-3 py-2 text-xs text-muted-foreground">
           {done || failed
             ? typeof part.output === "string"
@@ -201,7 +218,7 @@ function ToolCard({ part }: { part: ToolCardPart }) {
 }
 
 export function AssistantClient() {
-  const [model, setModel] = useState<AiModelId>(DEFAULT_AI_MODEL);
+  const [model, setModel] = useState<string>(DEFAULT_MODEL_ID);
   const { messages, status, sendMessage, error } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/assistant",
@@ -235,22 +252,7 @@ export function AssistantClient() {
           <label htmlFor="ai-model" className="text-xs text-muted-foreground">
             Model
           </label>
-          <Select
-            value={model}
-            onValueChange={(v) => setModel(v as AiModelId)}
-            disabled={isPending}
-          >
-            <SelectTrigger id="ai-model" className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {AI_MODELS.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label} · {m.hint}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <ModelPicker value={model} onChange={setModel} id="ai-model" />
         </div>
       </div>
 
