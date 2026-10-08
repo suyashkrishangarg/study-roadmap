@@ -39,7 +39,13 @@ export async function getDashboardData() {
         where: { userId, date: { gte: today, lt: addDays(today, 1) } },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.checkIn.findMany({ where: { userId }, select: { date: true } }),
+      // Streak only needs recent days, not the full history.
+      prisma.checkIn.findMany({
+        where: { userId, date: { gte: addDays(today, -60) } },
+        select: { date: true },
+        orderBy: { date: "desc" },
+        take: 60,
+      }),
       prisma.checkIn.groupBy({
         by: ["date"],
         where: { userId, date: { gte: addDays(today, -6), lt: addDays(today, 1) } },
@@ -482,6 +488,7 @@ export async function getCheckInStats() {
     prisma.checkIn.findMany({
       where: { userId, date: { gte: since } },
       orderBy: { date: "asc" },
+      take: 500,
     }),
     prisma.checkIn.findMany({
       where: { userId, date: { gte: today, lt: addDays(today, 1) } },
@@ -592,8 +599,11 @@ export async function getMarathons(): Promise<
   const marathons = await prisma.marathon.findMany({
     where: { workspaceId: member.user.workspaceId },
     orderBy: [{ startsAt: "desc" }, { createdAt: "desc" }],
+    take: 20,
     include: {
       sessions: {
+        orderBy: { startedAt: "desc" },
+        take: 100,
         include: { user: { select: { id: true, name: true, email: true } } },
       },
     },
@@ -704,12 +714,16 @@ export async function getAnalytics(): Promise<AnalyticsData | null> {
       select: { repetitions: true, intervalDays: true, dueDate: true },
     }),
     prisma.checkIn.findMany({
-      where: { userId },
+      where: { userId, date: { gte: addDays(today, -60) } },
       select: { date: true, durationMin: true, createdAt: true },
+      orderBy: { date: "desc" },
+      take: 500,
     }),
     prisma.task.findMany({
       where: { workspaceId, completedAt: { not: null } },
       select: { completedAt: true },
+      orderBy: { completedAt: "desc" },
+      take: 500,
     }),
     prisma.marathonSession.findMany({
       where: { userId, marathon: { workspaceId } },

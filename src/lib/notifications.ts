@@ -27,26 +27,28 @@ export async function ensureUpcomingNotifications(
   const now = new Date();
   const horizon = addDays(now, 1);
 
-  const tasks = await prisma.task.findMany({
-    where: {
-      workspaceId,
-      status: { not: "done" },
-      dueDate: { gte: now, lte: horizon },
-      OR: [{ assigneeId: userId }, { authorId: userId }],
-    },
-    select: { id: true, title: true, dueDate: true },
-  });
+  const [tasks, marathons] = await Promise.all([
+    prisma.task.findMany({
+      where: {
+        workspaceId,
+        status: { not: "done" },
+        dueDate: { gte: now, lte: horizon },
+        OR: [{ assigneeId: userId }, { authorId: userId }],
+      },
+      select: { id: true, title: true, dueDate: true },
+    }),
+    prisma.marathon.findMany({
+      where: { workspaceId, startsAt: { gte: now, lte: horizon } },
+      select: { id: true, title: true, startsAt: true },
+    }),
+  ]);
 
+  const candidates: { type: NotificationType; refId: string; title: string; body: string }[] = [];
   for (const task of tasks) {
     if (!task.dueDate) continue;
-    const existing = await prisma.notification.findFirst({
-      where: { userId, type: "deadline_approaching", refId: task.id },
-      select: { id: true },
-    });
-    if (existing) continue;
-    await createNotification({
-      userId,
+    candidates.push({
       type: "deadline_approaching",
+      refId: task.id,
       title: `Due soon: ${task.title}`,
       body: `Due ${task.dueDate.toLocaleString(undefined, {
         month: "short",
@@ -54,25 +56,13 @@ export async function ensureUpcomingNotifications(
         hour: "numeric",
         minute: "2-digit",
       })}`,
-      refId: task.id,
     });
   }
-
-  const marathons = await prisma.marathon.findMany({
-    where: { workspaceId, startsAt: { gte: now, lte: horizon } },
-    select: { id: true, title: true, startsAt: true },
-  });
-
   for (const marathon of marathons) {
     if (!marathon.startsAt) continue;
-    const existing = await prisma.notification.findFirst({
-      where: { userId, type: "marathon_starting", refId: marathon.id },
-      select: { id: true },
-    });
-    if (existing) continue;
-    await createNotification({
-      userId,
+    candidates.push({
       type: "marathon_starting",
+      refId: marathon.id,
       title: `Marathon starting: ${marathon.title}`,
       body: `Starts ${marathon.startsAt.toLocaleString(undefined, {
         month: "short",
@@ -80,7 +70,30 @@ export async function ensureUpcomingNotifications(
         hour: "numeric",
         minute: "2-digit",
       })}`,
-      refId: marathon.id,
     });
   }
+  if (candidates.length === 0) return;
+
+  // Single lookup for all existing notifications (was 1 query PER task/marathon).
+  const existing = await prisma.notification.findMany({
+    where: {
+      userId,
+      OR: candidates.map((c) => ({ type: c.type, refId: c.refId })),
+    },
+    select: { type: true, refId: true },
+  });
+  const seen = new Set(existing.map((e) => `${e.type}:${e.refId}`));
+  const fresh = candidates.filter((c) => !seen.has(`${c.type}:${c.refId}`));
+  if (fresh.length === 0) return;
+
+  await prisma.notification.createMany({
+    data: fresh.map((c) => ({
+      userId,
+      type: c.type,
+      title: c.title,
+      body: c.body,
+      refId: c.refId,
+    })),
+    skipDuplicates: true,
+  });
 }

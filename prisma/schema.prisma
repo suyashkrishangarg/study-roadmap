@@ -276,6 +276,7 @@ model QuizAttempt {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, quizId])
+  @@index([userId, completedAt])
 }
 
 model PracticeQuestion {
@@ -299,6 +300,7 @@ model PracticeQuestion {
   @@index([topic, difficulty])
   @@index([authorId])
   @@index([workspaceId])
+  @@index([workspaceId, createdAt])
 }
 
 model Marathon {
@@ -317,6 +319,7 @@ model Marathon {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
+  @@index([workspaceId, startsAt])
 }
 
 model MarathonSession {

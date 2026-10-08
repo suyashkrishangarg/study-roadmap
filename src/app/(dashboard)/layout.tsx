@@ -19,8 +19,10 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
+  // Fire-and-forget: notification generation must NEVER block the layout.
+  // (Previously `await`ed here = 2-4 extra DB round-trips on EVERY page click.)
   if (session.user.workspaceId) {
-    await ensureUpcomingNotifications(
+    ensureUpcomingNotifications(
       session.user.id,
       session.user.workspaceId,
     ).catch(() => {
