@@ -3,17 +3,20 @@
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteTask, updateTaskStatus } from "@/server-actions/tasks";
+import { addTaskLinks, removeTaskLink } from "@/server-actions/resource-links";
+import { ResourceLinks } from "@/components/resource-links";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Circle, PencilSimple, Trash } from "@phosphor-icons/react/ssr";
+import { CheckCircle, Circle, LinkSimple, PencilSimple, Trash } from "@phosphor-icons/react/ssr";
 import { startOfDay } from "@/lib/dates";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
-import type { Task } from "@prisma/client";
+import type { ResourceLink, Task } from "@prisma/client";
 import type { WorkspaceMember } from "@/lib/queries";
 
 export type TaskWithRelations = Task & {
   assignee: { id: string; name: string | null } | null;
   author: { id: string; name: string | null } | null;
+  resourceLinks: Pick<ResourceLink, "id" | "title" | "url">[];
   roadmapItem: {
     id: string;
     title: string;
@@ -104,6 +107,7 @@ export function TaskList({
   currentUserId: string;
 }) {
   const [editing, setEditing] = useState<TaskWithRelations | null>(null);
+  const [openLinks, setOpenLinks] = useState<string | null>(null);
 
   if (tasks.length === 0) {
     return (
@@ -131,11 +135,10 @@ export function TaskList({
             task.assignee?.id === currentUserId
               ? "You"
               : memberName(task.assignee?.id);
+          const expanded = openLinks === task.id;
           return (
-            <li
-              key={task.id}
-              className="flex items-center gap-3 px-4 py-3"
-            >
+            <li key={task.id} className="px-4 py-3">
+              <div className="flex items-center gap-3">
               <StatusButton taskId={task.id} status={task.status} />
               <div className="min-w-0 flex-1">
                 <p
@@ -159,12 +162,38 @@ export function TaskList({
               <Button
                 variant="ghost"
                 size="icon-xs"
+                onClick={() => setOpenLinks(expanded ? null : task.id)}
+                aria-label={expanded ? "Hide resource links" : "Show resource links"}
+                aria-expanded={expanded}
+                title={`${task.resourceLinks.length} resource link${task.resourceLinks.length === 1 ? "" : "s"}`}
+              >
+                <LinkSimple
+                  size={16}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className={task.resourceLinks.length > 0 ? "text-primary" : "text-muted-foreground"}
+                />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setEditing(task)}
                 aria-label="Edit task"
               >
                 <PencilSimple size={16} strokeWidth={1.5} aria-hidden="true" />
               </Button>
               <DeleteButton taskId={task.id} />
+              </div>
+              {expanded && (
+                <div className="mt-2 border-t border-border pt-2 pl-9">
+                  <ResourceLinks
+                    links={task.resourceLinks}
+                    onAdd={(links) => addTaskLinks(task.id, links)}
+                    onRemove={(linkId) => removeTaskLink(task.id, linkId)}
+                    compact
+                  />
+                </div>
+              )}
             </li>
           );
         })}

@@ -67,6 +67,10 @@ const toolLabels: Record<string, string> = {
   listNotifications: "Listed notifications",
   markAllNotificationsRead: "Cleared notifications",
   listMembers: "Listed members",
+  addTaskLinks: "Added links",
+  removeTaskLink: "Removed link",
+  addRoadmapItemLinks: "Added links",
+  removeRoadmapItemLink: "Removed link",
 };
 
 const suggestions = [
@@ -210,6 +214,58 @@ const READ_ONLY_TOOLS = new Set([
   "listPracticeQuestions",
   "listQuizzes",
 ]);
+
+type ReasoningPart = {
+  type: "reasoning";
+  text: string;
+  state?: string;
+};
+
+function isReasoningPart(part: unknown): part is ReasoningPart {
+  if (typeof part !== "object" || part === null) return false;
+  const p = part as { type?: unknown; text?: unknown };
+  return p.type === "reasoning" && typeof p.text === "string";
+}
+
+function ReasoningCard({ part }: { part: ReasoningPart }) {
+  const [expanded, setExpanded] = useState(false);
+  const streaming = part.state === "streaming";
+  const preview = part.text.length > 160 ? `${part.text.slice(0, 160)}…` : part.text;
+  return (
+    <div className="rounded-md border border-dashed border-border bg-muted/20">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs"
+        aria-expanded={expanded}
+      >
+        {streaming ? (
+          <CircleDashed size={14} className="shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+        ) : (
+          <Brain size={14} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+        )}
+        <span className="font-medium text-muted-foreground">
+          {streaming ? "Thinking…" : "Thought process"}
+        </span>
+        {!streaming && preview && (
+          <span className="min-w-0 flex-1 truncate text-muted-foreground/70">
+            {preview}
+          </span>
+        )}
+        {expanded ? (
+          <CaretDown size={14} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+        ) : (
+          <CaretRight size={14} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+        )}
+      </button>
+      {expanded && (
+        <p className="max-h-48 overflow-auto border-t border-border px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
+          {part.text || "No reasoning captured."}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function ToolCard({ part }: { part: ToolCardPart }) {
   const [expanded, setExpanded] = useState(false);
@@ -364,6 +420,13 @@ export function AssistantClient() {
                       <p key={index} className="whitespace-pre-wrap">
                         {part.text}
                       </p>
+                    );
+                  }
+                  if (isReasoningPart(part)) {
+                    return (
+                      <div key={index} className="mt-2">
+                        <ReasoningCard part={part} />
+                      </div>
                     );
                   }
                   if (isToolPart(part)) {

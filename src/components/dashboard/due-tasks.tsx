@@ -3,6 +3,8 @@
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { updateTaskStatus } from "@/server-actions/tasks";
+import { addTaskLinks, removeTaskLink } from "@/server-actions/resource-links";
+import { ResourceLinks } from "@/components/resource-links";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,13 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CheckCircle, ListChecks } from "@phosphor-icons/react/ssr";
+import { CheckCircle, LinkSimple, ListChecks } from "@phosphor-icons/react/ssr";
 import { startOfDay } from "@/lib/dates";
-import type { Task } from "@prisma/client";
+import type { ResourceLink, Task } from "@prisma/client";
 
 export type DueTask = Task & {
   assignee: { id: string; name: string | null } | null;
   author: { id: string; name: string | null } | null;
+  resourceLinks: Pick<ResourceLink, "id" | "title" | "url">[];
 };
 
 function CompleteButton({ taskId }: { taskId: string }) {
@@ -98,8 +101,9 @@ export function DueTasks({
               return (
                 <li
                   key={task.id}
-                  className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                  className="py-3 first:pt-0 last:pb-0"
                 >
+                  <div className="flex items-center gap-3">
                   <CompleteButton taskId={task.id} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{task.title}</p>
@@ -110,6 +114,46 @@ export function DueTasks({
                   </div>
                   {priorityBadge(task.priority)}
                   {due && <Badge variant={due.tone}>{due.text}</Badge>}
+                  <a
+                    href={task.resourceLinks[0]?.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={
+                      task.resourceLinks.length > 0
+                        ? `Open ${task.resourceLinks.length} resource link${task.resourceLinks.length === 1 ? "" : "s"} for ${task.title}`
+                        : undefined
+                    }
+                    title={
+                      task.resourceLinks.length > 0
+                        ? task.resourceLinks.map((l) => l.title).join(", ")
+                        : "No resource links"
+                    }
+                    onClick={(e) => {
+                      if (task.resourceLinks.length === 0) e.preventDefault();
+                    }}
+                    className={task.resourceLinks.length === 0 ? "pointer-events-none opacity-40" : undefined}
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                    >
+                      <LinkSimple size={15} strokeWidth={1.5} aria-hidden="true" />
+                    </Button>
+                  </a>
+                  </div>
+                  {task.resourceLinks.length > 1 && (
+                    <div className="mt-1.5 pl-9">
+                      <ResourceLinks
+                        links={task.resourceLinks.slice(1)}
+                        onAdd={(links) => addTaskLinks(task.id, links)}
+                        onRemove={(linkId) => removeTaskLink(task.id, linkId)}
+                        compact
+                      />
+                    </div>
+                  )}
                 </li>
               );
             })}

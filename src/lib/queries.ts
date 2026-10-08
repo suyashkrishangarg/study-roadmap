@@ -67,6 +67,7 @@ export async function getDashboardData() {
         include: {
           assignee: { select: { id: true, name: true } },
           author: { select: { id: true, name: true } },
+          resourceLinks: { orderBy: { sortOrder: "asc" } },
         },
         take: 8,
       }),
@@ -165,6 +166,7 @@ export async function getTasks(filters: TaskFilters = {}) {
       roadmapItem: {
         select: { id: true, title: true, roadmap: { select: { id: true, title: true } } },
       },
+      resourceLinks: { orderBy: { sortOrder: "asc" } },
     },
   });
 }
@@ -178,7 +180,10 @@ export async function getRoadmaps() {
       author: { select: { id: true, name: true } },
       items: {
         orderBy: { sortOrder: "asc" },
-        include: { assignee: { select: { id: true, name: true } } },
+        include: {
+          assignee: { select: { id: true, name: true } },
+          resourceLinks: { orderBy: { sortOrder: "asc" } },
+        },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -194,7 +199,10 @@ export async function getRoadmap(id: string) {
       author: { select: { id: true, name: true } },
       items: {
         orderBy: { sortOrder: "asc" },
-        include: { assignee: { select: { id: true, name: true } } },
+        include: {
+          assignee: { select: { id: true, name: true } },
+          resourceLinks: { orderBy: { sortOrder: "asc" } },
+        },
       },
     },
   });

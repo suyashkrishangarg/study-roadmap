@@ -40,13 +40,19 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   CircleDashed,
+  LinkSimple,
   PencilSimple,
   Plus,
   Trash,
 } from "@phosphor-icons/react/ssr";
-import type { Roadmap, RoadmapItemStatus } from "@prisma/client";
+import type { ResourceLink, Roadmap, RoadmapItemStatus } from "@prisma/client";
 import type { WorkspaceMember } from "@/lib/queries";
 import { RoadmapFormDialog } from "@/components/roadmaps/roadmap-form-dialog";
+import {
+  addRoadmapItemLinks,
+  removeRoadmapItemLink,
+} from "@/server-actions/resource-links";
+import { ResourceLinks } from "@/components/resource-links";
 
 export type RoadmapDetail = Roadmap & {
   author: { id: string; name: string | null };
@@ -59,6 +65,7 @@ export type RoadmapDetail = Roadmap & {
     startDate: Date | null;
     endDate: Date | null;
     assignee: { id: string; name: string | null } | null;
+    resourceLinks: Pick<ResourceLink, "id" | "title" | "url">[];
   }[];
 };
 
@@ -292,6 +299,7 @@ export function RoadmapDetailClient({
   const [editOpen, setEditOpen] = useState(false);
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<RoadmapDetail["items"][number] | null>(null);
+  const [openItemLinks, setOpenItemLinks] = useState<string | null>(null);
   const [deletePending, setDeletePending] = useState(false);
 
   const done = roadmap.items.filter((i) => i.status === "done").length;
@@ -386,8 +394,11 @@ export function RoadmapDetailClient({
         </div>
       ) : (
         <ul className="flex flex-col divide-y divide-border rounded-xl border border-border bg-card">
-          {roadmap.items.map((item, index) => (
-            <li key={item.id} className="flex items-center gap-3 px-4 py-3">
+          {roadmap.items.map((item, index) => {
+            const expanded = openItemLinks === item.id;
+            return (
+            <li key={item.id} className="px-4 py-3">
+              <div className="flex items-center gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center text-xs font-medium text-muted-foreground">
                 {index + 1}
               </span>
@@ -418,14 +429,41 @@ export function RoadmapDetailClient({
               <Button
                 variant="ghost"
                 size="icon-xs"
+                onClick={() => setOpenItemLinks(expanded ? null : item.id)}
+                aria-label={expanded ? "Hide resource links" : "Show resource links"}
+                aria-expanded={expanded}
+                title={`${item.resourceLinks.length} resource link${item.resourceLinks.length === 1 ? "" : "s"}`}
+              >
+                <LinkSimple
+                  size={16}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className={item.resourceLinks.length > 0 ? "text-primary" : "text-muted-foreground"}
+                />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setEditingItem(item)}
                 aria-label="Edit item"
               >
                 <PencilSimple size={16} strokeWidth={1.5} aria-hidden="true" />
               </Button>
               <DeleteItemButton itemId={item.id} />
+              </div>
+              {expanded && (
+                <div className="mt-2 border-t border-border pt-2 pl-9">
+                  <ResourceLinks
+                    links={item.resourceLinks}
+                    onAdd={(links) => addRoadmapItemLinks(item.id, links)}
+                    onRemove={(linkId) => removeRoadmapItemLink(item.id, linkId)}
+                    compact
+                  />
+                </div>
+              )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

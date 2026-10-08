@@ -73,6 +73,10 @@ export async function generateQuizFromTopic(input: {
       prompt: `Generate a quiz on the topic "${topic}"${
         input.notes ? ` based on these notes:\n${input.notes}` : ""
       }. Requirements: mix of multiple choice, true/false and short answer questions. For mcq, provide 4 options and set answer to the exact option text. For true_false, answer must be "True" or "False". For short_answer, answer is the accepted response (keep it short). Add a brief explanation for each question.`,
+      providerOptions: {
+        google: { thinkingConfig: { thinkingLevel: "high" } },
+        openaiCompatible: { reasoningEffort: "high" },
+      },
     }));
   } catch (error) {
     console.error("generateQuizFromTopic failed", error);
@@ -162,6 +166,10 @@ export async function generateFlashcards(input: {
       prompt: `Create flashcards on the topic "${topic}"${
         input.notes ? ` based on these notes:\n${input.notes}` : ""
       }. Each card: front = a question or term, back = the answer or definition. Keep both concise.`,
+      providerOptions: {
+        google: { thinkingConfig: { thinkingLevel: "high" } },
+        openaiCompatible: { reasoningEffort: "high" },
+      },
     }));
   } catch (error) {
     console.error("generateFlashcards failed", error);

@@ -8,6 +8,7 @@ import {
   normalizeModelId,
   resolveModel,
 } from "@/lib/ai-models";
+import { normalizeUrl } from "@/lib/resource-links";
 
 export const maxDuration = 30;
 
@@ -188,16 +189,17 @@ Study-time vs study-task disambiguation (IMPORTANT):
 - Never silently convert one into the other. If truly unclear, ask: "Should I add this as a task, or log it as time you already studied?"
 
 Domain rules:
-- Tasks are to-dos with an optional deadline (dueDate), priority, and assignee.
+- Tasks are to-dos with an optional deadline (dueDate), priority, assignee, and resource links (title + URL study materials).
 - Check-ins log COMPLETED study time (subject + minutes). Only log time the user says they actually studied, never planned time.
 - Goals are daily or weekly minute targets, optionally for one subject.
-- Roadmaps are long-term plans. Items have a title, status, progress (0-100), and optional start/end dates.
+- Roadmaps are long-term plans. Items have a title, status, progress (0-100), optional start/end dates, and resource links.
+- RESOURCE LINKS: attach study materials with addTaskLinks / addRoadmapItemLinks (any member may add; at most 10 per task/item; URLs must be valid http(s) — normalize bare domains to https://). listTasks and listRoadmaps already show existing links with their ids — reuse them, never re-add duplicates. Remove with removeTaskLink / removeRoadmapItemLink.
 - Practice questions are a bank of questions with topic, difficulty, prompt, options, and solution.
 - Quizzes are graded assessments users take on the Quizzes page.
 - The Timeline page is a READ-ONLY view of roadmap items (start/end dates). There is no separate "timeline" object: to change what the timeline shows, update the roadmap item dates; to clear the timeline, delete the roadmaps.
 - TRUTHFULNESS: only ever claim an action is done when its tool returned success. For deletes, state the exact count the tool reported (e.g. "Deleted 2 roadmaps"). Never say "removed all" unless the tool reported every item gone.
 - BULK DELETE SAFETY: "delete ALL roadmaps" requires the deleteAllRoadmaps tool with confirm DELETE. First reply asking for confirmation ("This will permanently delete N roadmaps... reply DELETE to confirm"), and only call the tool once the user confirms.
-- FULL POWER: you can manage EVERYTHING — tasks, roadmaps + items, check-ins, goals, practice questions, quizzes (create/delete/grade), flashcards (create/delete/grade with SM-2), marathons (create/delete), notifications, and member lookup. Prefer doing the thing over describing it.
+- FULL POWER: you can manage EVERYTHING — tasks, roadmaps + items, resource links on both, check-ins, goals, practice questions, quizzes (create/delete/grade), flashcards (create/delete/grade with SM-2), marathons (create/delete), notifications, and member lookup. Prefer doing the thing over describing it.
 - QUIZ GRADING: to grade a quiz you need question ids — listQuizzes does NOT return questions. Either quiz the user interactively in chat (ask each question, collect answers, call gradeQuiz), or tell them to take it on the Quizzes page.
 - FLASHCARD GRADING: gradeFlashcard reschedules with SM-2; tell the user the next due interval.
 - MARATHON SESSIONS (join/log/finish) happen on the Marathons page timers — you create and delete marathons; you don't run live sessions.
@@ -220,6 +222,12 @@ ${context}`;
     messages: await convertToModelMessages(messages as never),
     stopWhen: stepCountIs(8),
     toolChoice: "auto",
+    // Max reasoning everywhere: Google thinking HIGH + thoughts streamed,
+    // any OpenAI-compatible endpoint reasoning effort HIGH.
+    providerOptions: {
+      google: { thinkingConfig: { thinkingLevel: "high", includeThoughts: true } },
+      openaiCompatible: { reasoningEffort: "high" },
+    },
     tools: {
       getStudySummary: tool({
         description:
@@ -283,7 +291,7 @@ ${context}`;
 
       listTasks: tool({
         description:
-          "List tasks in the workspace, optionally filtered by status. Returns task ids, titles, status, priority, and due dates.",
+          "List tasks in the workspace, optionally filtered by status. Returns task ids, titles, status, priority, due dates, and resource links.",
         inputSchema: z.object({
           status: z
             .enum(["todo", "in_progress", "done"])
@@ -299,6 +307,10 @@ ${context}`;
               status: true,
               priority: true,
               dueDate: true,
+              resourceLinks: {
+                select: { id: true, title: true, url: true },
+                orderBy: { sortOrder: "asc" },
+              },
             },
             orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
             take: 25,
@@ -312,6 +324,7 @@ ${context}`;
               status: t.status,
               priority: t.priority,
               due: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : null,
+              resourceLinks: t.resourceLinks,
             })),
           });
         },
@@ -472,6 +485,146 @@ ${context}`;
         },
       }),
 
+      addTaskLinks: tool({
+        description:
+          "Attach resource links (title + URL) to a task. Any member can do this. Get the task id from listTasks first.",
+        inputSchema: z.object({
+          id: z.string().describe("Task id"),
+          links: z
+            .array(z.object({ title: z.string().min(1), url: z.string().min(1) }))
+            .min(1)
+            .max(10)
+            .describe("Links to attach"),
+        }),
+        execute: async ({ id, links }) => {
+          const existing = await prisma.task.findFirst({
+            where: { id, workspaceId },
+            select: { id: true, title: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Task ${id} not found.` });
+          }
+          const checked: { title: string; url: string }[] = [];
+          for (const link of links) {
+            const normalized = normalizeUrl(link.url);
+            if (!normalized) {
+              return JSON.stringify({
+                error: `"${link.url.slice(0, 60)}" is not a valid http(s) URL.`,
+              });
+            }
+            checked.push({ title: link.title.trim(), url: normalized });
+          }
+          const count = await prisma.resourceLink.count({ where: { taskId: id } });
+          if (count + checked.length > 10) {
+            return JSON.stringify({ error: "At most 10 resource links per task." });
+          }
+          await prisma.resourceLink.createMany({
+            data: checked.map((l, i) => ({
+              title: l.title,
+              url: l.url,
+              sortOrder: count + i,
+              taskId: id,
+            })),
+          });
+          return JSON.stringify({
+            added: true,
+            task: existing.title,
+            count: checked.length,
+          });
+        },
+      }),
+
+      removeTaskLink: tool({
+        description:
+          "Remove one resource link from a task. Get the task id and link id from listTasks first.",
+        inputSchema: z.object({
+          id: z.string().describe("Task id"),
+          linkId: z.string().describe("Resource link id"),
+        }),
+        execute: async ({ id, linkId }) => {
+          const existing = await prisma.resourceLink.findFirst({
+            where: { id: linkId, taskId: id, task: { workspaceId } },
+            select: { id: true, title: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: "That link was not found on this task." });
+          }
+          await prisma.resourceLink.delete({ where: { id: linkId } });
+          return JSON.stringify({ removed: true, title: existing.title });
+        },
+      }),
+
+      addRoadmapItemLinks: tool({
+        description:
+          "Attach resource links (title + URL) to a roadmap item. Any member can do this. Get the item id from listRoadmaps first.",
+        inputSchema: z.object({
+          id: z.string().describe("Roadmap item id"),
+          links: z
+            .array(z.object({ title: z.string().min(1), url: z.string().min(1) }))
+            .min(1)
+            .max(10)
+            .describe("Links to attach"),
+        }),
+        execute: async ({ id, links }) => {
+          const existing = await prisma.roadmapItem.findFirst({
+            where: { id, roadmap: { workspaceId } },
+            select: { id: true, title: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: `Roadmap item ${id} not found.` });
+          }
+          const checked: { title: string; url: string }[] = [];
+          for (const link of links) {
+            const normalized = normalizeUrl(link.url);
+            if (!normalized) {
+              return JSON.stringify({
+                error: `"${link.url.slice(0, 60)}" is not a valid http(s) URL.`,
+              });
+            }
+            checked.push({ title: link.title.trim(), url: normalized });
+          }
+          const count = await prisma.resourceLink.count({
+            where: { roadmapItemId: id },
+          });
+          if (count + checked.length > 10) {
+            return JSON.stringify({ error: "At most 10 resource links per item." });
+          }
+          await prisma.resourceLink.createMany({
+            data: checked.map((l, i) => ({
+              title: l.title,
+              url: l.url,
+              sortOrder: count + i,
+              roadmapItemId: id,
+            })),
+          });
+          return JSON.stringify({
+            added: true,
+            item: existing.title,
+            count: checked.length,
+          });
+        },
+      }),
+
+      removeRoadmapItemLink: tool({
+        description:
+          "Remove one resource link from a roadmap item. Get the item id and link id from listRoadmaps first.",
+        inputSchema: z.object({
+          id: z.string().describe("Roadmap item id"),
+          linkId: z.string().describe("Resource link id"),
+        }),
+        execute: async ({ id, linkId }) => {
+          const existing = await prisma.resourceLink.findFirst({
+            where: { id: linkId, roadmapItemId: id, roadmapItem: { roadmap: { workspaceId } } },
+            select: { id: true, title: true },
+          });
+          if (!existing) {
+            return JSON.stringify({ error: "That link was not found on this item." });
+          }
+          await prisma.resourceLink.delete({ where: { id: linkId } });
+          return JSON.stringify({ removed: true, title: existing.title });
+        },
+      }),
+
       deleteRoadmap: tool({
         description:
           "Delete ONE roadmap by id (its timeline items go with it). Get the id from listRoadmaps first. NEVER claim you deleted roadmaps until this tool returns deleted:true.",
@@ -531,7 +684,7 @@ ${context}`;
 
       listRoadmaps: tool({
         description:
-          "List roadmaps with their items (title, status, progress, dates). Takes no input.",
+          "List roadmaps with their items (title, status, progress, dates, resource links). Takes no input.",
         inputSchema: z.object({
           _unused: z.string().optional().describe("Unused. Omit this field."),
         }),
@@ -552,6 +705,10 @@ ${context}`;
                   progress: true,
                   startDate: true,
                   endDate: true,
+                  resourceLinks: {
+                    select: { id: true, title: true, url: true },
+                    orderBy: { sortOrder: "asc" },
+                  },
                 },
                 orderBy: { sortOrder: "asc" },
               },

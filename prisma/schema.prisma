@@ -178,8 +178,27 @@ model RoadmapItem {
 
   tasks Task[]
 
+  resourceLinks ResourceLink[]
+
   @@index([roadmapId, sortOrder])
   @@index([authorId])
+}
+
+model ResourceLink {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  roadmapItemId String?
+  roadmapItem   RoadmapItem? @relation(fields: [roadmapItemId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, sortOrder])
+  @@index([roadmapItemId, sortOrder])
 }
 
 model Task {
@@ -204,6 +223,8 @@ model Task {
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  resourceLinks ResourceLink[]
 
   @@index([authorId])
   @@index([assigneeId])
