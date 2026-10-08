@@ -49,8 +49,8 @@ const toolLabels: Record<string, string> = {
 
 const suggestions = [
   "What should I focus on today?",
-  "Add a task: study maths for 2 hours, due 10 October",
-  "Log 45 minutes of biology",
+  "Add a task: Study mathematics (2 hrs), due 10 October",
+  "I studied biology for 45 minutes",
   "What tasks are due this week?",
   "Create a weekly goal of 300 minutes",
 ];

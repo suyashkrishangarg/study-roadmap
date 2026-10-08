@@ -8,10 +8,33 @@ export const maxDuration = 30;
 
 function parseDateInput(value: string): Date | null {
   const trimmed = value.trim();
-  const direct = new Date(trimmed);
-  if (!isNaN(direct.getTime())) return direct;
+  // Bare "10 October" / "Oct 10" style with no year: anchor to the current year.
+  // (Plain `new Date("10 October")` resolves to year 2001 per spec — never pass that through.)
+  const noYear = /^[A-Za-z]{3,9}\s+\d{1,2}$|^\d{1,2}\s+[A-Za-z]{3,9}$/;
+  const candidates = noYear.test(trimmed)
+    ? [`${trimmed} ${new Date().getFullYear()}`, trimmed]
+    : [trimmed];
+  for (const candidate of candidates) {
+    const direct = new Date(candidate);
+    if (!isNaN(direct.getTime())) {
+      // Guard against the classic JS fallback: 2-part dates landing in 2001.
+      if (noYear.test(trimmed) && direct.getFullYear() < 2024) {
+        const fixed = new Date(`${trimmed} ${new Date().getFullYear()}`);
+        if (!isNaN(fixed.getTime())) return fixed;
+        continue;
+      }
+      // Sanity window: study plans live in the present, not 2001 or 2040.
+      if (direct.getFullYear() < 2024 || direct.getFullYear() > 2030) {
+        continue;
+      }
+      return direct;
+    }
+  }
   const parsed = Date.parse(trimmed);
-  if (!isNaN(parsed)) return new Date(parsed);
+  if (!isNaN(parsed)) {
+    const d = new Date(parsed);
+    if (d.getFullYear() >= 2024 && d.getFullYear() <= 2030) return d;
+  }
   return null;
 }
 
@@ -131,13 +154,32 @@ export async function POST(req: Request) {
     members.map((m) => `- ${m.name ?? m.email} (id ${m.id})`).join("\n"),
   ].join("\n");
 
+  const today = new Date();
+  const todayStr = today.toLocaleDateString("en-CA"); // YYYY-MM-DD in server TZ
+  const todayLong = today.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
   const systemPrompt = `You are the AI study assistant for a small study group. You can read AND modify the user's workspace data: tasks, roadmaps, check-ins, goals, practice questions, and quizzes.
+
+TODAY IS ${todayLong} (${todayStr}).
+- When the user gives a date without a year ("10 October", "Oct 10", "10 Oct"), it means ${today.getFullYear()} unless they explicitly say another year.
+- NEVER invent 2025 or any past year. All deadlines are this year or later.
+- "today" = ${todayStr}. "tomorrow" = the next calendar day. Weekday names ("Friday", "next Monday") resolve forward from today, never backward.
+- When you call a tool with a date, ALWAYS pass a full YYYY-MM-DD string, never "10 October".
 
 How to behave:
 - When the user asks to add, change, or remove something, call the right tool. Do not just describe what they should do manually.
-- After a tool call, confirm what you did in one or two plain sentences.
+- After a tool call, confirm what you did in one or two plain sentences, including the resolved date (e.g. "due 10 October 2026").
 - If a request is ambiguous (unclear date, unknown task, missing subject), ask one clarifying question instead of guessing.
-- Interpret natural dates ("10 october", "this Friday", "tomorrow") as YYYY-MM-DD.
+
+Study-time vs study-task disambiguation (IMPORTANT):
+- "Add a 2-hour maths study task" / "add X hrs <subject> study task" = a TASK (a plan, createTask), NOT logged time. Durations belong in the task title (e.g. "Study mathematics (2 hrs)"), never in createCheckIn.
+- Only call createCheckIn when the user says they ALREADY studied ("I studied maths 2 hours", "log 45 min biology").
+- Never silently convert one into the other. If truly unclear, ask: "Should I add this as a task, or log it as time you already studied?"
 
 Domain rules:
 - Tasks are to-dos with an optional deadline (dueDate), priority, and assignee.
@@ -255,18 +297,18 @@ ${context}`;
 
       createTask: tool({
         description:
-          "Create a new task. Use when the user asks to add something to do, with an optional deadline, priority, or assignee.",
+          "Create a new task. Use when the user asks to add something to do ('add a 2-hour maths study task'). Keep any duration in the title like 'Study mathematics (2 hrs)'. Never for completed study time.",
         inputSchema: z.object({
           title: z.string().min(1).describe("Short task title"),
           notes: z.string().optional().describe("Extra details"),
           priority: z
             .enum(["low", "medium", "high"])
             .optional()
-            .describe("Priority, default medium"),
+            .describe("Priority, default medium. Use high only if the user says urgent/ASAP/exam."),
           dueDate: z
             .string()
             .optional()
-            .describe("Deadline as YYYY-MM-DD"),
+            .describe("Deadline as FULL YYYY-MM-DD (e.g. 2026-10-10). Today or later, never a past year."),
           assigneeName: z
             .string()
             .optional()
@@ -290,12 +332,20 @@ ${context}`;
 
           let dueDate: Date | null = null;
           if (args.dueDate) {
-            dueDate = parseDateInput(args.dueDate);
-            if (!dueDate) {
+            const parsed = parseDateInput(args.dueDate);
+            if (!parsed) {
               return JSON.stringify({
                 error: `Could not understand the date "${args.dueDate}". Use YYYY-MM-DD.`,
               });
             }
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            if (parsed < startOfToday) {
+              return JSON.stringify({
+                error: `That due date (${formatDate(parsed)}) is in the past. Give a date of today or later.`,
+              });
+            }
+            dueDate = parsed;
           }
 
           const task = await prisma.task.create({
@@ -332,11 +382,16 @@ ${context}`;
         execute: async (args) => {
           const existing = await prisma.task.findFirst({
             where: { id: args.id, workspaceId },
-            select: { id: true, title: true },
+            select: { id: true, title: true, authorId: true },
           });
           if (!existing) {
             return JSON.stringify({
               error: `Task ${args.id} not found in this workspace.`,
+            });
+          }
+          if (existing.authorId !== userId && session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({
+              error: `You can only edit tasks you created (or ask an admin). "${existing.title}" was created by someone else.`,
             });
           }
 
@@ -353,6 +408,13 @@ ${context}`;
             if (!dueDate) {
               return JSON.stringify({
                 error: `Could not understand the date "${args.dueDate}". Use YYYY-MM-DD.`,
+              });
+            }
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            if (dueDate < startOfToday) {
+              return JSON.stringify({
+                error: `That due date (${formatDate(dueDate)}) is in the past. Give a date of today or later.`,
               });
             }
             data.dueDate = dueDate;
@@ -373,10 +435,15 @@ ${context}`;
         execute: async ({ id }) => {
           const existing = await prisma.task.findFirst({
             where: { id, workspaceId },
-            select: { id: true, title: true },
+            select: { id: true, title: true, authorId: true },
           });
           if (!existing) {
             return JSON.stringify({ error: `Task ${id} not found.` });
+          }
+          if (existing.authorId !== userId && session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({
+              error: `You can only delete tasks you created (or ask an admin). "${existing.title}" was created by someone else.`,
+            });
           }
           await prisma.task.delete({ where: { id } });
           return JSON.stringify({ deleted: true, title: existing.title });
@@ -423,8 +490,8 @@ ${context}`;
         inputSchema: z.object({
           title: z.string().min(1),
           description: z.string().optional(),
-          startDate: z.string().optional().describe("YYYY-MM-DD"),
-          endDate: z.string().optional().describe("YYYY-MM-DD"),
+          startDate: z.string().optional().describe("Start as FULL YYYY-MM-DD. Today or later, never a past year."),
+          endDate: z.string().optional().describe("End as FULL YYYY-MM-DD. Must be on/after the start date."),
         }),
         execute: async (args) => {
           const startDate = args.startDate
@@ -439,6 +506,18 @@ ${context}`;
           if (args.endDate && !endDate) {
             return JSON.stringify({
               error: `Could not understand end date "${args.endDate}". Use YYYY-MM-DD.`,
+            });
+          }
+          const startOfToday = new Date();
+          startOfToday.setHours(0, 0, 0, 0);
+          if (startDate && startDate < startOfToday) {
+            return JSON.stringify({
+              error: `That start date (${formatDate(startDate)}) is in the past. Give a date of today or later.`,
+            });
+          }
+          if (startDate && endDate && endDate < startDate) {
+            return JSON.stringify({
+              error: `The end date (${formatDate(endDate)}) is before the start date (${formatDate(startDate)}). Fix the range.`,
             });
           }
           const roadmap = await prisma.roadmap.create({
@@ -466,16 +545,21 @@ ${context}`;
           id: z.string().describe("Roadmap id"),
           title: z.string().optional(),
           description: z.string().optional(),
-          startDate: z.string().optional().describe("YYYY-MM-DD"),
-          endDate: z.string().optional().describe("YYYY-MM-DD"),
+          startDate: z.string().optional().describe("Start as FULL YYYY-MM-DD. Today or later."),
+          endDate: z.string().optional().describe("End as FULL YYYY-MM-DD. Must be on/after the start date."),
         }),
         execute: async (args) => {
           const existing = await prisma.roadmap.findFirst({
             where: { id: args.id, workspaceId },
-            select: { id: true, title: true },
+            select: { id: true, title: true, authorId: true, startDate: true },
           });
           if (!existing) {
             return JSON.stringify({ error: `Roadmap ${args.id} not found.` });
+          }
+          if (existing.authorId !== userId && session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({
+              error: `You can only edit roadmaps you created (or ask an admin). "${existing.title}" was created by someone else.`,
+            });
           }
           const data: Record<string, unknown> = {};
           if (args.title !== undefined) data.title = args.title;
@@ -488,6 +572,13 @@ ${context}`;
                 error: `Could not understand start date "${args.startDate}".`,
               });
             }
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            if (startDate < startOfToday) {
+              return JSON.stringify({
+                error: `That start date (${formatDate(startDate)}) is in the past. Give a date of today or later.`,
+              });
+            }
             data.startDate = startDate;
           }
           if (args.endDate !== undefined) {
@@ -495,6 +586,12 @@ ${context}`;
             if (!endDate) {
               return JSON.stringify({
                 error: `Could not understand end date "${args.endDate}".`,
+              });
+            }
+            const rangeStart = (data.startDate as Date | undefined) ?? existing.startDate;
+            if (rangeStart && endDate < rangeStart) {
+              return JSON.stringify({
+                error: `The end date (${formatDate(endDate)}) is before the start date (${formatDate(rangeStart)}). Fix the range.`,
               });
             }
             data.endDate = endDate;
@@ -511,8 +608,8 @@ ${context}`;
           roadmapId: z.string().describe("Roadmap id"),
           title: z.string().min(1),
           description: z.string().optional(),
-          startDate: z.string().optional().describe("YYYY-MM-DD"),
-          endDate: z.string().optional().describe("YYYY-MM-DD"),
+          startDate: z.string().optional().describe("Start as FULL YYYY-MM-DD. Today or later."),
+          endDate: z.string().optional().describe("End as FULL YYYY-MM-DD. Must be on/after the start date."),
           assigneeName: z.string().optional(),
           progress: z.number().int().min(0).max(100).optional(),
         }),
@@ -544,6 +641,28 @@ ${context}`;
             ? parseDateInput(args.startDate)
             : null;
           const endDate = args.endDate ? parseDateInput(args.endDate) : null;
+          if (args.startDate && !startDate) {
+            return JSON.stringify({
+              error: `Could not understand start date "${args.startDate}". Use YYYY-MM-DD.`,
+            });
+          }
+          if (args.endDate && !endDate) {
+            return JSON.stringify({
+              error: `Could not understand end date "${args.endDate}". Use YYYY-MM-DD.`,
+            });
+          }
+          const startOfToday = new Date();
+          startOfToday.setHours(0, 0, 0, 0);
+          if (startDate && startDate < startOfToday) {
+            return JSON.stringify({
+              error: `That start date (${formatDate(startDate)}) is in the past. Give a date of today or later.`,
+            });
+          }
+          if (startDate && endDate && endDate < startDate) {
+            return JSON.stringify({
+              error: `The end date (${formatDate(endDate)}) is before the start date (${formatDate(startDate)}). Fix the range.`,
+            });
+          }
           const item = await prisma.roadmapItem.create({
             data: {
               roadmapId: roadmap.id,
@@ -582,11 +701,16 @@ ${context}`;
         execute: async (args) => {
           const existing = await prisma.roadmapItem.findFirst({
             where: { id: args.id, roadmap: { workspaceId } },
-            select: { id: true, title: true },
+            select: { id: true, title: true, authorId: true, startDate: true },
           });
           if (!existing) {
             return JSON.stringify({
               error: `Roadmap item ${args.id} not found.`,
+            });
+          }
+          if (existing.authorId !== userId && session.user.role !== "admin" && session.user.role !== "owner") {
+            return JSON.stringify({
+              error: `You can only edit roadmap items you created (or ask an admin). "${existing.title}" was created by someone else.`,
             });
           }
           const data: Record<string, unknown> = {};
@@ -600,6 +724,13 @@ ${context}`;
                 error: `Could not understand start date "${args.startDate}".`,
               });
             }
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            if (startDate < startOfToday) {
+              return JSON.stringify({
+                error: `That start date (${formatDate(startDate)}) is in the past. Give a date of today or later.`,
+              });
+            }
             data.startDate = startDate;
           }
           if (args.endDate !== undefined) {
@@ -607,6 +738,12 @@ ${context}`;
             if (!endDate) {
               return JSON.stringify({
                 error: `Could not understand end date "${args.endDate}".`,
+              });
+            }
+            const rangeStart = (data.startDate as Date | undefined) ?? existing.startDate;
+            if (rangeStart && endDate < rangeStart) {
+              return JSON.stringify({
+                error: `The end date (${formatDate(endDate)}) is before the start date (${formatDate(rangeStart)}). Fix the range.`,
               });
             }
             data.endDate = endDate;
@@ -648,7 +785,7 @@ ${context}`;
 
       createCheckIn: tool({
         description:
-          "Log a COMPLETED study session (subject + minutes). Only use when the user says they actually studied. Never log planned time.",
+          "Log a COMPLETED study session (subject + minutes). Only use when the user says they actually studied ('I studied maths 2 hours', 'log 45 min biology'). Never for planned/future study.",
         inputSchema: z.object({
           subject: z.string().min(1).describe("Subject studied"),
           durationMin: z
@@ -656,12 +793,12 @@ ${context}`;
             .int()
             .min(1)
             .max(1440)
-            .describe("Minutes studied"),
+            .describe("Minutes already studied"),
           note: z.string().optional(),
           date: z
             .string()
             .optional()
-            .describe("Date as YYYY-MM-DD, defaults to today"),
+            .describe("Date as FULL YYYY-MM-DD, defaults to today. Never a future date."),
         }),
         execute: async (args) => {
           let date = new Date();
@@ -670,6 +807,14 @@ ${context}`;
             if (!parsed) {
               return JSON.stringify({
                 error: `Could not understand the date "${args.date}". Use YYYY-MM-DD.`,
+              });
+            }
+            const startOfTomorrow = new Date();
+            startOfTomorrow.setHours(0, 0, 0, 0);
+            startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+            if (parsed >= startOfTomorrow) {
+              return JSON.stringify({
+                error: `Check-ins log time you ALREADY studied. ${formatDate(parsed)} is in the future — use createTask for planned study instead.`,
               });
             }
             date = parsed;
