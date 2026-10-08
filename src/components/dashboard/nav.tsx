@@ -54,6 +54,7 @@ export function DashboardNav() {
             <Link
               key={link.href}
               href={link.href}
+              title={link.label}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
                 active
@@ -62,7 +63,8 @@ export function DashboardNav() {
               )}
             >
               <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
-              {link.label}
+              <span className="hidden lg:inline">{link.label}</span>
+              <span className="sr-only lg:hidden">{link.label}</span>
             </Link>
           );
         })}
