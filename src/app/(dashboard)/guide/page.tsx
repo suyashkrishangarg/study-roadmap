@@ -1,6 +1,7 @@
 import {
   Bell,
   BookOpen,
+  Books,
   CalendarBlank,
   ChartBarHorizontal,
   ChartPie,
@@ -51,6 +52,14 @@ const SECTIONS = [
     body: "Long-term plans broken into trackable items with status, progress %, dates, and assignees. Each roadmap is a card with a progress bar; open it for the full item list.",
     pro: "One roadmap per subject or exam. Items are chapters; progress % is honesty-checked against quiz scores.",
     ai: ["Create a roadmap for physics exam prep", "Add an item 'Thermodynamics' to my physics roadmap", "Delete the DELETE roadmap"],
+  },
+  {
+    icon: Books,
+    title: "Resources",
+    route: "/resources",
+    body: "Your full library of 298 curated courses, videos, docs and papers across 8 groups (Maths, CS, Programming, DSA, Classical ML, Deep Learning, RL, LLM Systems). Search and filter by group, level, and type.",
+    pro: "Star the keepers as favorites, then attach any resource to a roadmap item so the plan and the material stay connected.",
+    ai: ["What resources do I have for linear algebra?", "Show my favorite resources"],
   },
   {
     icon: ChartBarHorizontal,

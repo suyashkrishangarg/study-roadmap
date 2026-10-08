@@ -72,6 +72,20 @@ enum PracticeQuestionSource {
   ai
 }
 
+enum ResourceType {
+  video
+  playlist
+  website
+  channel
+  link
+}
+
+enum ResourceLevel {
+  Beginner
+  Intermediate
+  Advanced
+}
+
 model AiProvider {
   id        String   @id @default(cuid())
   name      String
@@ -102,6 +116,7 @@ model Workspace {
   practiceQuestions PracticeQuestion[]
   marathons     Marathon[]
   aiProviders   AiProvider[]
+  resources     Resource[]
 }
 
 model User {
@@ -199,6 +214,30 @@ model ResourceLink {
 
   @@index([taskId, sortOrder])
   @@index([roadmapItemId, sortOrder])
+}
+
+model Resource {
+  id          String        @id @default(cuid())
+  sourceIndex Int           @unique
+  title       String
+  url         String
+  type        ResourceType
+  source      String
+  group       String
+  rank        Int
+  level       ResourceLevel
+  durationMin Int?
+  favorite    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, group])
+  @@index([workspaceId, level])
+  @@index([workspaceId, type])
+  @@index([workspaceId, favorite])
 }
 
 model Task {

@@ -1,0 +1,163 @@
+=== ROADMAP FOLDER ===
+MASTER_PLAN.md  (125.8 KB)
+resources.json  (4295.7 KB)
+
+=== resources.json ===
+top-level type: object
+top-level keys: source_file, schema_version, note, total_resources, group_order, counts_by_group, counts_by_type, counts_by_source, total_watch_time_hours, total_watch_time_hours_sum_seconds, groups, resource_index, transcripts, websites, description_char_total
+  [group_order] array, length 8
+    [0] keys: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33
+    [0] sample: "Mathematics & Quantitative Finance"
+  [counts_by_group] object keys: LLM Systems & AI Agents, Programming, Mathematics & Quantitative Finance, CS Fundamentals, Classical Machine Learning, Data Structures & Algorithms, Deep Learning, Reinforcement Learning
+  [counts_by_type] object keys: link, video, channel, website, playlist
+  [counts_by_source] object keys: sites.ualberta.ca, stanford-cs336.github.io, takeuforward.org, sbert.net, learncpp.com, promptfoo.dev, git-lfs.com, redis.io, mlflow.org, usaco.guide, cs231n.stanford.edu, cs162.org, jalammar.github.io, khan-academy, scribd.com, promptingguide.ai, docs.pytest.org, ai.pydantic.dev, deepeval.com, modelcontextprotocol.io
+  [groups] array, length 8
+    [0] keys: name, order, count, resources
+    [0] sample: {"name":"Mathematics & Quantitative Finance","order":1,"count":54,"resources":[{"title":"JEE 2025: Basic Maths & ADV Manipulations | JEE Advanced & Mains | JEE 2025 Unbeatable Course | Ep-1","url":"https://youtu.be/WUmWcMDWYzE","type":"video","source":"youtube","meta":"4hrs 17min","total_seconds":15420,"total_duration":"4h 17m 0s","summary":"## Overview\n\nThis lecture is the first episode of a JEE Mathematics “Unbeatable Crash Course,” beginning with basic mathematical and geometric ideas and progressing to the manipulations and quadratic-equation theory needed for JEE-level problem solving. 
+  [resource_index] array, length 298
+    [0] keys: source_index, title, url, type, source, group, rank, level
+    [0] sample: {"source_index":3,"title":"JEE 2025: Basic Maths & ADV Manipulations | JEE Advanced & Mains | JEE 2025 Unbeatable Course | Ep-1","url":"https://youtu.be/WUmWcMDWYzE","type":"video","source":"youtube","group":"Mathematics & Quantitative Finance","rank":1,"level":"Beginner"}
+  [transcripts] object keys: attempted, fetched, no_transcript, failed, engine, language_preference, parallel_workers
+  [websites] object keys: total, fetched_ok, with_description, failed, total_words_extracted, source
+
+=== MASTER_PLAN.md ===
+total lines: 1592  chars: 126768
+--- HEADINGS ---
+1| # 🎯 THE MASTER PLAN — Suyash's Dual-Track Roadmap
+2| ## 👤 Who this is for
+2| ## 🧭 The Two Tracks (run these in parallel every day)
+2| ## 🔁 The Weekly Rhythm (repeat every week)
+2| ## 🗺️ How the whole journey is phased
+3| ### ⏱️ Time-budget & feasibility audit (read this — it changes the numbers)
+3| ### 🎯 One primary resource per topic (de-duplication rule)
+2| ## 🔑 Resource tagging convention
+1| # 📅 PART 1 — PHASE 0: IGNITION (Weeks 1–14)
+2| ## 🅰️ TRACK A — Phase 0 · Maths on-ramp (Steps 1–8)
+3| ### Step 1 — Number sense & basic algebra
+3| ### Step 2 — Algebra foundations
+3| ### Step 3 — Algebra + functions
+3| ### Step 4 — Trigonometry & coordinate geometry
+3| ### Step 5 — Calculus intuition (the big idea)
+3| ### Step 6 — Linear-algebra intuition (the other big idea)
+3| ### Step 7 — Consolidation & Class 12 calculus preview
+3| ### Step 8 — Phase-0 checkpoint & "think like a mathematician"
+2| ## 🅱️ TRACK B — Phase 0 · Python from zero → DSA Month 1 (Steps 1–8)
+3| ### Step 1 — Your first Python (setup + basics)
+3| ### Step 2 — Loops, lists, and logic
+3| ### Step 3 — Dictionaries, sets, files + NumPy preview
+3| ### Step 4 — DSA Month 1 begins: complexity + arrays/strings
+3| ### Step 5 — Hashing (sets & maps) — the workhorse
+3| ### Step 6 — Sorting + two-pointer foundations
+3| ### Step 7 — Binary search + recursion
+3| ### Step 8 — Linked lists, stacks, queues + Month-1 checkpoint
+1| # 📅 PART 2 — PHASE 1: CORE MATH + CORE DSA (Weeks 15–33)
+2| ## 🅰️ TRACK A — Phase 1 · Core maths (Steps 9–20)
+3| ### Step 9 — Discrete math for beginners (logic & proof)
+3| ### Step 10 — Discrete math: counting, relations, functions
+3| ### Step 11 — Discrete math for CS (proofs & structures)
+3| ### Step 12 — Applied discrete math
+3| ### Step 13 — Probability intuition
+3| ### Step 14 — Probability depth
+3| ### Step 15 — Formal single-variable calculus
+3| ### Step 16 — Integration (formal)
+3| ### Step 17 — Formal linear algebra
+3| ### Step 18 — Linear algebra: orthogonality & projections
+3| ### Step 19 — Differential equations (light, for physics/ML later)
+3| ### Step 20 — Phase-1 checkpoint
+2| ## 🅱️ TRACK B — Phase 1 · DSA patterns + first projects (Steps 9–20)
+3| ### Step 9 — Two pointers in depth
+3| ### Step 10 — Sliding window
+3| ### Step 11 — Prefix sums + difference arrays
+3| ### Step 12 — Intervals + matrices + project #1
+3| ### Step 13 — Advanced binary search + binary search on answer
+3| ### Step 14 — Monotonic stack + intro greedy
+3| ### Step 15 — Trees: binary trees + DFS
+3| ### Step 16 — Trees: BST + path problems
+3| ### Step 17 — Heaps + top-k
+3| ### Step 18 — Tries + graph representation + BFS
+3| ### Step 19 — DFS on graphs + cycle detection + topological sort
+3| ### Step 20 — Phase-1 checkpoint + project #2 + pandas
+1| # 📅 PART 3 — PHASE 2: STATS + SYSTEMS + DP (Weeks 34–47)
+2| ## 🅰️ TRACK A — Phase 2 · Stats + CS fundamentals (Steps 21–28)
+3| ### Step 21 — Formal probability (Harvard Stat 110 style)
+3| ### Step 22 — Probability for CS (or MIT 6.041)
+3| ### Step 23 — Statistics for AI (applied bridge)
+3| ### Step 24 — Statistical tooling in Python
+3| ### Step 25 — CS Fundamentals: how computers work
+3| ### Step 26 — CS Fundamentals: compilers & abstraction
+3| ### Step 27 — CS Fundamentals: computation structures
+3| ### Step 28 — Phase-2 checkpoint
+2| ## 🅱️ TRACK B — Phase 2 · Recursion, Backtracking, DP + Project #3 (Steps 21–28)
+3| ### Step 21 — Recursion deep-dive + subsets
+3| ### Step 22 — Backtracking
+3| ### Step 23 — 1D dynamic programming
+3| ### Step 24 — 2D DP + grid
+3| ### Step 25 — Knapsack family
+3| ### Step 26 — Greedy reasoning + intervals revisit
+3| ### Step 27 — 🚀 PROJECT #3 — "Algorithm Visualizer + Notebook"
+3| ### Step 28 — Phase-2 checkpoint + interview habits
+1| # 📅 PART 4 — PHASE 3: QUANT + ADVANCED DSA + ML IGNITION (Weeks 48–65)
+2| ## 🅰️ TRACK A — Phase 3 · Quant + CS systems (Steps 29–40)
+3| ### Step 29 — Quant interview maths (puzzles)
+3| ### Step 30 — Quant question platforms
+3| ### Step 31 — Maths for finance
+3| ### Step 32 — Financial theory
+3| ### Step 33 — Market making intuition
+3| ### Step 34 — Algorithmic trading foundations
+3| ### Step 35 — Quant strategies course
+3| ### Step 36 — CS systems: programming paradigms + OS
+3| ### Step 37 — CS systems: performance engineering
+3| ### Step 38 — Quant channels (breadth)
+3| ### Step 39 — Consolidation (quant + CS systems)
+3| ### Step 40 — Phase-3 checkpoint
+2| ## 🅱️ TRACK B — Phase 3 · Advanced DSA → Classical ML ignition (Steps 29–40)
+3| ### Step 29 — Advanced graphs: shortest paths
+3| ### Step 30 — Minimum spanning trees + advanced union-find
+3| ### Step 31 — Bit manipulation + advanced heaps
+3| ### Step 32 — Advanced DP + string algorithms
+3| ### Step 33 — Trees advanced: segment / Fenwick (awareness) + tries
+3| ### Step 34 — Design problems + LeetCode 75 push
+3| ### Step 35 — 🚀 PROJECT #4 + Classical ML Stage 0 begins
+3| ### Step 36 — Classical ML Stage 1 (probability/stats for ML)
+3| ### Step 37 — Classical ML Stage 2 (linear models)
+3| ### Step 38 — Logistic regression + sklearn workflow
+3| ### Step 39 — 🚀 PROJECT #5 — "Linear Models from Scratch"
+3| ### Step 40 — Phase-3 checkpoint (Track B)
+1| # 📅 PART 5 — PHASES 4 & 5: THE ML / RL / LLM ENGINE (Weeks 66 → end)
+2| ## 🅱️ TRACK B — Classical ML (follows `classical ml.md` Stages 3–13)
+2| ## 🅱️ TRACK B — Reinforcement Learning (follows `reinforcement learning.md` 54-row table)
+2| ## 🅱️ TRACK B — LLM Systems Engineering (follows `LLM Systems Engineering.md` Stages 1–12)
+2| ## 🅰️ TRACK A — supporting role from Phase 4 (Week ~66) on
+1| # 🧰 PART 6 — OPERATING SYSTEM (rules that make the plan work)
+2| ## The Problem Review System (after EVERY DSA problem)
+2| ## What To Do When Stuck (the ladder — never skip steps)
+2| ## The 7 Consistency Rules (during busy SST weeks)
+2| ## The ML Learning Philosophy (for every Classical-ML / LLM concept)
+2| ## The LLM Learning Philosophy (7 laws)
+2| ## Monthly Consolidation (every 4th week, ~2 h)
+2| ## Weekly Review (Sunday, 15 min per track)
+1| # 🗂️ PART 7 — MASTER PROJECT REGISTRY
+2| ## Track B — DSA / Python projects
+2| ## Track B — Classical ML projects (Stages 0–13, from `classical ml.md`)
+2| ## Track B — RL projects (from `reinforcement learning.md`)
+2| ## Track B — LLM Systems projects (Stages 1–12 + capstone, from `LLM Systems Engineering.md`)
+1| # 📚 PART 8 — LOSSLESS APPENDICES (everything from the old `.md` files)
+1| # Appendix A — DSA (the complete `dsa.md`, condensed but complete)
+2| ## A.1 Six-Month Phase Overview
+2| ## A.2 Recommended Resources (one main + one backup; never watch multiple tutorials before a problem)
+2| ## A.3 Language Choice
+2| ## A.4 Month 1 — Day-by-Day (the exact problem list from `dsa.md`)
+2| ## A.5 Months 2–6 — Topic Lists (in encounter order)
+1| # Appendix B — Maths, Quant & CS Fundamentals (topic → resource map)
+2| ## B.1 Algebra & school maths
+2| ## B.2 Calculus
+2| ## B.3 Linear algebra
+2| ## B.4 Discrete mathematics
+2| ## B.5 Probability & statistics
+2| ## B.6 Quantitative finance & interview prep
+2| ## B.7 CS Fundamentals
+1| # Appendix C — Classical ML (full stage topics from `classical ml.md`)
+1| # Appendix D — Reinforcement Learning (the full 54-row curriculum from `reinforcement learning.md`)
+1| # Appendix E — LLM Systems Engineering (full stage topics from `LLM Systems Engineering.md`)
+1| # Appendix F — LLM topic → resource map (from `llm engineering resources.md`)
+1| # Appendix Z — Full Resource Key (all 298 resources in `resources.json`)

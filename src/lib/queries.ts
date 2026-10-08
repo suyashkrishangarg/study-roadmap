@@ -14,6 +14,8 @@ import type {
   Prisma,
   PracticeQuestionDifficulty,
   Priority,
+  ResourceLevel,
+  ResourceType,
   Role,
   TaskStatus,
 } from "@prisma/client";
@@ -965,3 +967,66 @@ export async function getAnalytics(): Promise<AnalyticsData | null> {
     },
   };
 }
+
+export type ResourceGroupCount = { group: string; count: number };
+
+export async function getResources(filters?: {
+  search?: string;
+  group?: string;
+  level?: ResourceLevel;
+  type?: ResourceType;
+  favoritesOnly?: boolean;
+}) {
+  const member = await requireMember();
+  if (!member.ok) return null;
+
+  const where: Prisma.ResourceWhereInput = { workspaceId: member.user.workspaceId };
+  if (filters?.group) where.group = filters.group;
+  if (filters?.level) where.level = filters.level;
+  if (filters?.type) where.type = filters.type;
+  if (filters?.favoritesOnly) where.favorite = true;
+  if (filters?.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: "insensitive" } },
+      { source: { contains: filters.search, mode: "insensitive" } },
+      { group: { contains: filters.search, mode: "insensitive" } },
+    ];
+  }
+
+  return prisma.resource.findMany({
+    where,
+    orderBy: [{ group: "asc" }, { rank: "asc" }, { sourceIndex: "asc" }],
+  });
+}
+
+export async function getResourceGroups(): Promise<ResourceGroupCount[] | null> {
+  const member = await requireMember();
+  if (!member.ok) return null;
+  const rows = await prisma.resource.groupBy({
+    by: ["group"],
+    where: { workspaceId: member.user.workspaceId },
+    _count: { _all: true },
+  });
+  return rows
+    .map((r) => ({ group: r.group, count: r._count._all }))
+    .sort((a, b) => a.group.localeCompare(b.group));
+}
+
+/** Roadmap → items, for the "attach resource to item" picker. */
+export async function getRoadmapItemOptions() {
+  const member = await requireMember();
+  if (!member.ok) return null;
+  return prisma.roadmap.findMany({
+    where: { workspaceId: member.user.workspaceId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      items: {
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, title: true },
+      },
+    },
+  });
+}
+

@@ -15,6 +15,7 @@ import {
   ListChecks,
   MapTrifold,
   BookOpen,
+  Books,
   Compass,
   Timer,
 } from "@phosphor-icons/react/ssr";
@@ -23,6 +24,7 @@ const links = [
   { href: "/", label: "Dashboard", icon: House, match: "/" },
   { href: "/tasks", label: "Tasks", icon: ListChecks, match: "/tasks" },
   { href: "/roadmaps", label: "Roadmaps", icon: MapTrifold, match: "/roadmaps" },
+  { href: "/resources", label: "Resources", icon: Books, match: "/resources" },
   { href: "/timeline", label: "Timeline", icon: ChartBarHorizontal, match: "/timeline" },
   { href: "/calendar", label: "Calendar", icon: CalendarBlank, match: "/calendar" },
   { href: "/check-ins", label: "Check-ins", icon: Timer, match: "/check-ins" },
