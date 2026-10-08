@@ -9,9 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.92",
+    "@ai-sdk/react": "^4.0.136",
     "@neondatabase/serverless": "^1.2.0",
     "@phosphor-icons/react": "^2.1.10",
     "@prisma/client": "^6.19.3",
+    "ai": "^7.0.133",
     "apexcharts": "^7.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

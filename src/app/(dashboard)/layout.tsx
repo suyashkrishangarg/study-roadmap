@@ -1,7 +1,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getNotifications } from "@/lib/queries";
 import { SignOutButton } from "@/components/sign-out-button";
 import { DashboardNav } from "@/components/dashboard/nav";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { GraduationCap } from "@phosphor-icons/react/ssr";
 
 export const instant = false;
@@ -17,6 +19,10 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
+  const notifications = session.user.workspaceId
+    ? await getNotifications()
+    : [];
+
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <header className="flex items-center justify-between border-b border-border px-4 py-3 md:px-6">
@@ -29,7 +35,12 @@ export default async function DashboardLayout({
           </div>
           {session.user.workspaceId && <DashboardNav />}
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-1">
+          {session.user.workspaceId && notifications && (
+            <NotificationBell initialNotifications={notifications} />
+          )}
+          <SignOutButton />
+        </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-6">
         {children}

@@ -24,20 +24,20 @@ AI cannot build everything at once. Each phase ends with a working, deployable a
 - [x] **Gate**: pushed `90aaabc` to main; Vercel Git integration auto-deploys.
 
 ## Phase 2 — Quizzes + AI + notifications
-- [ ] Quiz engine: create (manual / template / AI), take, auto-grade, attempt history, per-topic accuracy
-- [ ] Practice-question bank: CRUD, filter by topic/difficulty, mark mastered
-- [ ] AI teaching assistant: streaming chat (`streamText`) with workspace-subject + user-history context
-- [ ] AI quiz generation from a topic/notes; AI flashcard generation (per-user daily cap)
-- [ ] In-app notifications: bell icon, unread badges (deadline approaching, marathon starting, quiz graded)
-- [ ] **Gate**: deploy; a friend can take a quiz, chat with the assistant, get notifications.
+- [x] Quiz engine: create (manual / template / AI), take, auto-grade, attempt history, per-topic accuracy
+- [x] Practice-question bank: CRUD, filter by topic/difficulty, mark mastered
+- [x] AI teaching assistant: streaming chat (`streamText`) with workspace-subject + user-history context
+- [x] AI quiz generation from a topic/notes; AI flashcard generation (per-user daily cap)
+- [x] In-app notifications: bell icon, unread badges (deadline approaching, marathon starting, quiz graded)
+- [x] **Gate**: deploy; a friend can take a quiz, chat with the assistant, get notifications.
 
 ## Phase 3 — Marathons + SRS + advanced analytics
-- [ ] Exam-prep marathons: scheduled events (live timer, per-member minutes, leaderboard, completion rate)
-- [ ] On-demand focus timer (counts toward goals)
-- [ ] SRS flashcards: SM-2 scheduler, due queue, retention stats
-- [ ] Advanced analytics: subject-mastery radar (ApexCharts), retention curves, leaderboard, badges/streaks
-- [ ] ApexCharts multi-Y-axis "polygraph" (minutes vs tasks vs quiz scores)
-- [ ] **Gate**: deploy; full end-to-end pass (invite → join → check in → roadmap → task → goal → quiz → AI chat → marathon → analytics).
+- [x] Exam-prep marathons: scheduled events (live timer, per-member minutes, leaderboard, completion rate)
+- [x] On-demand focus timer (counts toward goals)
+- [x] SRS flashcards: SM-2 scheduler, due queue, retention stats
+- [x] Advanced analytics: subject-mastery radar (ApexCharts), retention curves, leaderboard, badges/streaks
+- [x] ApexCharts multi-Y-axis "polygraph" (minutes vs tasks vs quiz scores)
+- [x] **Gate**: deploy; full end-to-end pass (invite → join → check in → roadmap → task → goal → quiz → AI chat → marathon → analytics).
 
 ## Phase 4 (optional, post-launch)
 - Email reminders (Resend), PDF → AI decks (Vercel Blob), custom domain, PWA polish.
