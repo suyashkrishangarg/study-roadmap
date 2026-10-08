@@ -38,7 +38,7 @@ export function DashboardNav() {
 
   return (
     <nav
-      className="max-w-full overflow-x-auto"
+      className="min-w-0 max-w-full flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       aria-label="Main"
     >
       <div className="flex items-center gap-1">

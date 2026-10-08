@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { google } from "@ai-sdk/google";
 import { convertToModelMessages, stepCountIs, streamText, tool } from "ai";
 import { z } from "zod";
+import { DEFAULT_AI_MODEL, isAiModelId } from "@/lib/ai-models";
 
 export const maxDuration = 30;
 
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
   const userId = session.user.id;
   const workspaceId = session.user.workspaceId;
 
-  let body: { messages?: unknown[] } = {};
+  let body: { messages?: unknown[]; model?: unknown } = {};
   try {
     body = await req.json();
   } catch {
@@ -174,6 +175,7 @@ TODAY IS ${todayLong} (${todayStr}).
 How to behave:
 - When the user asks to add, change, or remove something, call the right tool. Do not just describe what they should do manually.
 - After a tool call, confirm what you did in one or two plain sentences, including the resolved date (e.g. "due 10 October 2026").
+- NEVER paste raw tool JSON (ids, {"id": ...}, {}) into your reply. Tool results render as their own cards — your reply must be plain human sentences only.
 - If a request is ambiguous (unclear date, unknown task, missing subject), ask one clarifying question instead of guessing.
 
 Study-time vs study-task disambiguation (IMPORTANT):
@@ -193,7 +195,7 @@ Current workspace context:
 ${context}`;
 
   const result = streamText({
-    model: google("gemini-flash-lite-latest"),
+    model: google(isAiModelId(body.model) ? body.model : DEFAULT_AI_MODEL),
     system: systemPrompt,
     messages: await convertToModelMessages(messages as never),
     stopWhen: stepCountIs(5),

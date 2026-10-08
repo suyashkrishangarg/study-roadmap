@@ -23,9 +23,15 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "cn";
-
-const transport = new DefaultChatTransport({ api: "/api/assistant" });
+import { AI_MODELS, DEFAULT_AI_MODEL, type AiModelId } from "@/lib/ai-models";
 
 const toolLabels: Record<string, string> = {
   getStudySummary: "Study summary",
@@ -93,12 +99,42 @@ function summarize(output: unknown): string | null {
       if (parsed.deleted) return parsed.title ?? "Deleted";
       if (parsed.logged)
         return `${parsed.subject} · ${parsed.durationMin} min`;
-      if (parsed.tasks) return `${parsed.tasks.length} task(s)`;
-      if (parsed.roadmaps) return `${parsed.roadmaps.length} roadmap(s)`;
-      if (parsed.checkIns) return `${parsed.checkIns.length} session(s)`;
-      if (parsed.goals) return `${parsed.goals.length} goal(s)`;
-      if (parsed.questions) return `${parsed.questions.length} question(s)`;
-      if (parsed.quizzes) return `${parsed.quizzes.length} quiz(zes)`;
+      if (parsed.tasks) {
+        if (parsed.tasks.length === 0) return "No matching tasks";
+        return parsed.tasks
+          .slice(0, 3)
+          .map((t: { title?: string }) => t.title ?? "Untitled")
+          .join(" · ");
+      }
+      if (parsed.roadmaps) {
+        if (parsed.roadmaps.length === 0) return "No roadmaps";
+        return parsed.roadmaps
+          .slice(0, 3)
+          .map((r: { title?: string }) => r.title ?? "Untitled")
+          .join(" · ");
+      }
+      if (parsed.checkIns) {
+        if (parsed.checkIns.length === 0) return "No sessions found";
+        const total = (
+          parsed.checkIns as { durationMin?: number }[]
+        ).reduce((s, c) => s + (c.durationMin ?? 0), 0);
+        return `${parsed.checkIns.length} session(s) · ${total} min`;
+      }
+      if (parsed.goals) {
+        if (parsed.goals.length === 0) return "No goals yet";
+        return `${parsed.goals.length} goal(s)`;
+      }
+      if (parsed.questions) {
+        if (parsed.questions.length === 0) return "No questions found";
+        return `${parsed.questions.length} question(s)`;
+      }
+      if (parsed.quizzes) {
+        if (parsed.quizzes.length === 0) return "No quizzes yet";
+        return parsed.quizzes
+          .slice(0, 3)
+          .map((q: { title?: string }) => q.title ?? "Untitled")
+          .join(" · ");
+      }
       if (parsed.todayMinutes !== undefined)
         return `${parsed.todayMinutes} min today · streak ${parsed.streak}`;
     }
@@ -116,12 +152,16 @@ function ToolCard({ part }: { part: ToolCardPart }) {
   const failed = state === "output-error";
   const summary = done ? summarize(part.output) : null;
 
+  // Collapsed by default once finished: the summary line is the UI.
+  // Raw input/output JSON stays available behind the expander for debugging,
+  // but the model MUST NOT paste JSON into its reply text (see route prompt).
   return (
     <div className="rounded-md border border-border bg-muted/30">
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs"
+        aria-expanded={expanded}
       >
         {done ? (
           <CheckCircle size={14} className="shrink-0 text-primary" aria-hidden="true" />
@@ -161,8 +201,12 @@ function ToolCard({ part }: { part: ToolCardPart }) {
 }
 
 export function AssistantClient() {
+  const [model, setModel] = useState<AiModelId>(DEFAULT_AI_MODEL);
   const { messages, status, sendMessage, error } = useChat({
-    transport,
+    transport: new DefaultChatTransport({
+      api: "/api/assistant",
+      body: () => ({ model }),
+    }),
   });
   const [input, setInput] = useState("");
   const isPending = status === "submitted" || status === "streaming";
@@ -177,14 +221,37 @@ export function AssistantClient() {
 
   return (
     <div className="flex h-[calc(100dvh-9rem)] flex-col gap-4">
-      <div>
-        <h1 className="text-2xl tracking-tight md:text-3xl">
-          Study assistant
-        </h1>
-        <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-          Ask about your plan, or ask it to add tasks, log study time,
-          update roadmaps, and more.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl tracking-tight md:text-3xl">
+            Study assistant
+          </h1>
+          <p className="mt-2 text-base leading-relaxed text-muted-foreground">
+            Ask about your plan, or ask it to add tasks, log study time,
+            update roadmaps, and more.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="ai-model" className="text-xs text-muted-foreground">
+            Model
+          </label>
+          <Select
+            value={model}
+            onValueChange={(v) => setModel(v as AiModelId)}
+            disabled={isPending}
+          >
+            <SelectTrigger id="ai-model" className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AI_MODELS.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.label} · {m.hint}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-2">

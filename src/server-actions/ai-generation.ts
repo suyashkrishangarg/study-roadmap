@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireMember, type ActionResult } from "@/lib/authz";
 import { startOfDay } from "@/lib/dates";
+import { DEFAULT_AI_MODEL } from "@/lib/ai-models";
 import {
   Prisma,
   type Flashcard,
@@ -58,7 +59,7 @@ export async function generateQuizFromTopic(input: {
   let object: z.infer<typeof quizSchema>;
   try {
     ({ object } = await generateObject({
-      model: google("gemini-flash-lite-latest"),
+      model: google(DEFAULT_AI_MODEL),
       schema: quizSchema,
       prompt: `Generate a quiz on the topic "${topic}"${
         input.notes ? ` based on these notes:\n${input.notes}` : ""
@@ -142,7 +143,7 @@ export async function generateFlashcards(input: {
   let object: z.infer<typeof flashcardSchema>;
   try {
     ({ object } = await generateObject({
-      model: google("gemini-flash-lite-latest"),
+      model: google(DEFAULT_AI_MODEL),
       schema: flashcardSchema,
       prompt: `Create flashcards on the topic "${topic}"${
         input.notes ? ` based on these notes:\n${input.notes}` : ""
