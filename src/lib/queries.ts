@@ -161,7 +161,7 @@ export async function getTasks(filters: TaskFilters = {}) {
 
   return prisma.task.findMany({
     where,
-    orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+    orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
     include: {
       assignee: { select: { id: true, name: true } },
       author: { select: { id: true, name: true } },

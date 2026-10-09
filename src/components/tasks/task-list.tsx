@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, Circle, LinkSimple, PencilSimple, Trash } from "@phosphor-icons/react/ssr";
 import { startOfDay } from "@/lib/dates";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
+import { ClampedText } from "@/components/clamped-text";
 import type { ResourceLink, Task } from "@prisma/client";
 import type { WorkspaceMember } from "@/lib/queries";
 
@@ -156,6 +157,9 @@ export function TaskList({
                   {task.roadmapItem &&
                     ` · ${task.roadmapItem.roadmap.title} / ${task.roadmapItem.title}`}
                 </p>
+                {task.notes && task.notes.trim() && (
+                  <ClampedText text={task.notes} lines={2} className="mt-1" />
+                )}
               </div>
               {priorityBadge(task.priority)}
               {due && <Badge variant={due.tone}>{due.text}</Badge>}

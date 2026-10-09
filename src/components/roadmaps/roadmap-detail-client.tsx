@@ -53,6 +53,7 @@ import {
   removeRoadmapItemLink,
 } from "@/server-actions/resource-links";
 import { ResourceLinks } from "@/components/resource-links";
+import { ClampedText } from "@/components/clamped-text";
 
 export type RoadmapDetail = Roadmap & {
   author: { id: string; name: string | null };
@@ -418,6 +419,9 @@ export function RoadmapDetailClient({
                     ? ` · ${item.startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${item.endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
                     : ""}
                 </p>
+                {item.description && item.description.trim() && (
+                  <ClampedText text={item.description} lines={3} className="mt-1" />
+                )}
               </div>
               {item.progress > 0 && item.status !== "done" && (
                 <span className="hidden w-24 sm:block">
