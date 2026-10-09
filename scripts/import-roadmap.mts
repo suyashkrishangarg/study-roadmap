@@ -105,8 +105,8 @@ type SeedItem = {
   weekStart: number;
   weekEnd: number;
   links: number[];
-  isProject?: { label: string };
-  isCheckpoint?: boolean;
+  project?: { num: string; name: string; milestone: string };
+  checkpoint?: { label: string; checklist: string[] };
 };
 type SeedRoadmap = {
   title: string;
@@ -242,18 +242,53 @@ function parsePlan(): SeedRoadmap[] {
       const total = we - ws + 1;
       const per = total / n;
 
+      // Track + phase label for readable checkpoint task names.
+      const phaseMatch2 = sec.raw.match(/Phase\s*(\d)/i);
+      const phaseLabel = phaseMatch2 ? `Phase ${phaseMatch2[1]}` : "Phase 0";
+
       stepBlocks.forEach((blk, idx) => {
         const bodyText = blk.lines.join("\n").trim();
         const a = ws + Math.floor(idx * per);
         const b = Math.max(a, ws + Math.floor((idx + 1) * per) - 1);
         const clean = cleanText(bodyText);
         const refs = extractRefs(bodyText);
-        const isCheckpoint = /checkpoint/i.test(blk.header);
 
-        let isProject: { label: string } | undefined;
-        const projMatch = bodyText.match(/🚀\s*PROJECT\s*#?(\d+)\s*[—–-]\s*"([^"]+)"/i);
-        if (projMatch) {
-          isProject = { label: `🚀 Project #${projMatch[1]}: ${projMatch[2]}` };
+        // ── Project detection: marker may be in the header OR the body. ──
+        // e.g. header: "Step 35 — 🚀 PROJECT #4 + Classical ML Stage 0 begins"
+        //      body:   "- **🚀 PROJECT #1 — "Python Toolkit":** ..."
+        let project: { num: string; name: string; milestone: string } | undefined;
+        const projHeader = blk.header.match(/🚀\s*PROJECT\s*#?(\d+)/i);
+        const projBody = bodyText.match(/🚀\s*PROJECT\s*#?(\d+)\s*[—–+-]\s*"([^"]+)"/i);
+        if (projBody) {
+          const milestoneMatch = bodyText.match(/\*\*Milestone:?\*\*:?\s*([\s\S]*?)(?:\n\s*[-*]|\n\s*\n|$)/i);
+          const milestone = milestoneMatch ? cleanText(milestoneMatch[1]) : "";
+          project = { num: projBody[1], name: projBody[2], milestone };
+        } else if (projHeader) {
+          // Header form (e.g. "PROJECT #3 — "Algorithm Visualizer + Notebook"")
+          const nameMatch =
+            blk.header.match(/🚀\s*PROJECT\s*#?\d+\s*[—–+-]\s*"([^"]+)"/i) ??
+            bodyText.match(/🚀\s*PROJECT\s*#?\d+\s*[—–+-]\s*"([^"]+)"/i);
+          const milestoneMatch = bodyText.match(/\*\*Milestone:?\*\*:?\s*([\s\S]*?)(?:\n\s*[-*]|\n\s*\n|$)/i);
+          const milestone = milestoneMatch ? cleanText(milestoneMatch[1]) : "";
+          if (nameMatch) {
+            project = { num: projHeader[1], name: nameMatch[1], milestone };
+          }
+        }
+
+        // ── Checkpoint detection: a step whose header mentions "checkpoint". ──
+        // Notes become ONLY the "[ ]" checklist lines (clean, not the whole step).
+        let checkpoint: { label: string; checklist: string[] } | undefined;
+        if (/checkpoint/i.test(blk.header)) {
+          const checklist = bodyText
+            .split("\n")
+            .map((l) => l.match(/^\s*[-*]?\s*\[[ xX]\]\s*(.+)$/))
+            .filter((m): m is RegExpMatchArray => Boolean(m))
+            .map((m) => m[1].trim());
+          const shortTitle = blk.header.replace(/^Step\s+\d+\s+—\s+/, "").replace(/\(Track [AB]\)/i, "").trim();
+          checkpoint = {
+            label: `Checkpoint · ${phaseLabel} (Track ${sec.track}): ${shortTitle}`,
+            checklist,
+          };
         }
 
         items.push({
@@ -262,8 +297,8 @@ function parsePlan(): SeedRoadmap[] {
           weekStart: a,
           weekEnd: b,
           links: refs.slice(0, MAX_LINKS_PER_ITEM),
-          isProject,
-          isCheckpoint,
+          project,
+          checkpoint,
         });
       });
 
@@ -360,8 +395,8 @@ async function main() {
 
   const totalItems = roadmaps.reduce((s, r) => s + r.items.length, 0);
   const totalLinks = roadmaps.reduce((s, r) => s + r.items.reduce((t, it) => t + it.links.length, 0), 0);
-  const totalProjects = roadmaps.reduce((s, r) => s + r.items.filter((it) => it.isProject).length, 0);
-  const totalCheckpoints = roadmaps.reduce((s, r) => s + r.items.filter((it) => it.isCheckpoint).length, 0);
+  const totalProjects = roadmaps.reduce((s, r) => s + r.items.filter((it) => it.project).length, 0);
+  const totalCheckpoints = roadmaps.reduce((s, r) => s + r.items.filter((it) => it.checkpoint).length, 0);
 
   console.log("=== PARSE SUMMARY ===");
   console.log("anchor (Week 1):", anchor.toISOString().slice(0, 10));
@@ -375,6 +410,21 @@ async function main() {
   console.log("project tasks:", totalProjects, "| checkpoint tasks:", totalCheckpoints);
 
   if (dryRun) {
+    if (process.argv.includes("--debug-tasks")) {
+      console.log("\n=== TASK PREVIEW ===");
+      for (const r of roadmaps) {
+        for (const it of r.items) {
+          if (it.project) {
+            console.log(`\n[PROJECT] 🚀 Project #${it.project.num}: ${it.project.name}`);
+            console.log(`  notes: ${it.project.milestone ? `Done when: ${it.project.milestone}` : `Build project #${it.project.num}: ${it.project.name}`}`);
+          }
+          if (it.checkpoint) {
+            console.log(`\n[CHECKPOINT] ${it.checkpoint.label}`);
+            console.log(`  notes:\n${it.checkpoint.checklist.map((c) => `    [ ] ${c}`).join("\n") || "    (no checklist — prove without notes)"}`);
+          }
+        }
+      }
+    }
     console.log("\n[dry-run] no writes performed.");
     await prisma.$disconnect();
     return;
@@ -474,11 +524,14 @@ async function main() {
         linksCreated += created.count;
       }
 
-      if (it.isProject) {
+      if (it.project) {
+        const note = it.project.milestone
+          ? `Done when: ${it.project.milestone}`
+          : `Build project #${it.project.num}: ${it.project.name}`;
         await prisma.task.create({
           data: {
-            title: it.isProject.label,
-            notes: it.description || null,
+            title: `🚀 Project #${it.project.num}: ${it.project.name}`,
+            notes: note,
             priority: Priority.high,
             status: "todo",
             dueDate: iEnd,
@@ -489,11 +542,14 @@ async function main() {
         });
         tasksCreated++;
       }
-      if (it.isCheckpoint) {
+      if (it.checkpoint) {
+        const note = it.checkpoint.checklist.length
+          ? it.checkpoint.checklist.map((c) => `[ ] ${c}`).join("\n")
+          : "Prove this phase's skills without notes.";
         await prisma.task.create({
           data: {
-            title: `Verify: ${it.title.replace(/^Step\s+\d+\s+—\s+/, "")}`,
-            notes: it.description || null,
+            title: it.checkpoint.label,
+            notes: note,
             priority: Priority.medium,
             status: "todo",
             dueDate: iEnd,

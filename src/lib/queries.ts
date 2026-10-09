@@ -188,7 +188,7 @@ export async function getRoadmaps() {
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ startDate: "asc" }, { createdAt: "asc" }],
   });
 }
 

@@ -112,9 +112,10 @@ export function TaskFormDialog({
             <Textarea
               id="notes"
               name="notes"
-              rows={2}
+              rows={3}
               maxLength={2000}
               defaultValue={initial?.notes ?? ""}
+              className="max-h-40 resize-y overflow-y-auto"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
