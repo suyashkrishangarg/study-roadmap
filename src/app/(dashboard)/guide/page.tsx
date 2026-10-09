@@ -2,6 +2,7 @@ import {
   Bell,
   BookOpen,
   Books,
+  Rocket,
   CalendarBlank,
   ChartBarHorizontal,
   ChartPie,
@@ -60,6 +61,14 @@ const SECTIONS = [
     body: "Your full library of 298 curated courses, videos, docs and papers across 8 groups (Maths, CS, Programming, DSA, Classical ML, Deep Learning, RL, LLM Systems). Search and filter by group, level, and type.",
     pro: "Star the keepers as favorites, then attach any resource to a roadmap item so the plan and the material stay connected.",
     ai: ["What resources do I have for linear algebra?", "Show my favorite resources"],
+  },
+  {
+    icon: Rocket,
+    title: "Projects",
+    route: "/projects",
+    body: "Every build in your roadmap — 77 projects across DSA/Python, Classical ML, Reinforcement Learning, and LLM Systems, with stage, estimated hours, priority, and dependencies.",
+    pro: "Star the projects you're committing to, then 'Add as task' to schedule one. The assistant can list them and add any to your tasks too.",
+    ai: ["What projects do I have left?", "Add the RAG assistant project to my tasks", "Which LLM projects are Core priority?"],
   },
   {
     icon: ChartBarHorizontal,

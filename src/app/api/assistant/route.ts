@@ -204,6 +204,7 @@ Domain rules:
 - FLASHCARD GRADING: gradeFlashcard reschedules with SM-2; tell the user the next due interval.
 - MARATHON SESSIONS (join/log/finish) happen on the Marathons page timers — you create and delete marathons; you don't run live sessions.
 - ADMIN ACTIONS (roles, removing users, providers) live on the /admin page — you can look up members with listMembers, but role changes stay with human admins.
+- PROJECTS + RESOURCES LIBRARY: the /projects page lists every build in the roadmap (DSA/Python, Classical ML, RL, LLM Systems) and the /resources page is a library of 298 study materials. Use listProjects to answer "what projects do I have / what should I build next", favoriteProject to star one, and createTaskFromProject to add a project to the user's tasks. These are read/favorite/task actions — you don't edit project metadata itself.
 
 Current workspace context:
 ${context}`;
@@ -1655,6 +1656,126 @@ ${context}`;
             orderBy: { name: "asc" },
           });
           return JSON.stringify({ members });
+        },
+      }),
+
+      listProjects: tool({
+        description:
+          "List the roadmap projects (the builds on the /projects page), optionally filtered by category (DSA / Python, Classical ML, Reinforcement Learning, LLM Systems), search text, or favorites only. Returns project ids, titles, category, stage, est. hours, priority, and favorite state.",
+        inputSchema: z.object({
+          category: z
+            .string()
+            .optional()
+            .describe("Filter by category, e.g. 'LLM Systems' or 'Classical ML'"),
+          search: z.string().optional().describe("Filter by title/description text"),
+          favoritesOnly: z.boolean().optional().describe("Only favorited projects"),
+        }),
+        execute: async ({ category, search, favoritesOnly }) => {
+          const where: Record<string, unknown> = { workspaceId };
+          if (category) where.category = category;
+          if (favoritesOnly) where.favorite = true;
+          if (search) {
+            where.OR = [
+              { title: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
+            ];
+          }
+          const projects = await prisma.project.findMany({
+            where,
+            select: {
+              id: true,
+              title: true,
+              category: true,
+              stageRef: true,
+              estHours: true,
+              priority: true,
+              favorite: true,
+            },
+            orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+            take: 60,
+          });
+          if (projects.length === 0)
+            return JSON.stringify({ projects: [], note: "No projects found." });
+          return JSON.stringify({ count: projects.length, projects });
+        },
+      }),
+
+      favoriteProject: tool({
+        description:
+          "Toggle a project's favorite (star). Get the project id from listProjects first.",
+        inputSchema: z.object({
+          id: z.string().describe("Project id"),
+        }),
+        execute: async ({ id }) => {
+          const existing = await prisma.project.findFirst({
+            where: { id, workspaceId },
+            select: { id: true, title: true, favorite: true },
+          });
+          if (!existing) return JSON.stringify({ error: `Project ${id} not found.` });
+          const updated = await prisma.project.update({
+            where: { id },
+            data: { favorite: !existing.favorite },
+            select: { favorite: true },
+          });
+          return JSON.stringify({
+            title: existing.title,
+            favorite: updated.favorite,
+          });
+        },
+      }),
+
+      createTaskFromProject: tool({
+        description:
+          "Add a roadmap project to the user's Tasks (as 'Build: <project>') so it can be tracked. Optionally give a due date (YYYY-MM-DD). Skips if an open task for it already exists. Get the project id from listProjects first.",
+        inputSchema: z.object({
+          id: z.string().describe("Project id"),
+          dueDate: z.string().optional().describe("YYYY-MM-DD"),
+        }),
+        execute: async ({ id, dueDate }) => {
+          const project = await prisma.project.findFirst({
+            where: { id, workspaceId },
+            select: { id: true, title: true, description: true, category: true },
+          });
+          if (!project) return JSON.stringify({ error: `Project ${id} not found.` });
+          const taskTitle = `Build: ${project.title}`;
+          const existing = await prisma.task.findFirst({
+            where: { workspaceId, title: taskTitle, status: { not: "done" } },
+            select: { id: true },
+          });
+          if (existing) {
+            return JSON.stringify({
+              alreadyExisted: true,
+              title: taskTitle,
+              note: "Already on your tasks.",
+            });
+          }
+          let due: Date | null = null;
+          if (dueDate) {
+            due = parseDateInput(dueDate);
+            if (!due) {
+              return JSON.stringify({ error: `Could not understand due date "${dueDate}".` });
+            }
+          }
+          const notes = project.description
+            ? `${project.description}\n\nCategory: ${project.category}`
+            : `Category: ${project.category}`;
+          const task = await prisma.task.create({
+            data: {
+              title: taskTitle,
+              notes,
+              priority: "medium",
+              status: "todo",
+              dueDate: due,
+              authorId: userId,
+              workspaceId,
+            },
+            select: { id: true, dueDate: true },
+          });
+          return JSON.stringify({
+            created: true,
+            title: taskTitle,
+            due: task.dueDate ? task.dueDate.toISOString().slice(0, 10) : null,
+          });
         },
       }),
 

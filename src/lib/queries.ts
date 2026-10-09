@@ -1030,3 +1030,48 @@ export async function getRoadmapItemOptions() {
   });
 }
 
+export type ProjectCategoryCount = { category: string; count: number };
+
+export async function getProjects(filters?: {
+  search?: string;
+  category?: string;
+  favoritesOnly?: boolean;
+}) {
+  const member = await requireMember();
+  if (!member.ok) return null;
+
+  const where: Prisma.ProjectWhereInput = { workspaceId: member.user.workspaceId };
+  if (filters?.category) where.category = filters.category;
+  if (filters?.favoritesOnly) where.favorite = true;
+  if (filters?.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: "insensitive" } },
+      { description: { contains: filters.search, mode: "insensitive" } },
+      { category: { contains: filters.search, mode: "insensitive" } },
+    ];
+  }
+
+  return prisma.project.findMany({
+    where,
+    orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+}
+
+export async function getProjectCategories(): Promise<ProjectCategoryCount[] | null> {
+  const member = await requireMember();
+  if (!member.ok) return null;
+  const rows = await prisma.project.groupBy({
+    by: ["category"],
+    where: { workspaceId: member.user.workspaceId },
+    _count: { _all: true },
+  });
+  const order = ["DSA / Python", "Classical ML", "Reinforcement Learning", "LLM Systems"];
+  return rows
+    .map((r) => ({ category: r.category, count: r._count._all }))
+    .sort((a, b) => {
+      const ia = order.indexOf(a.category);
+      const ib = order.indexOf(b.category);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+}
+

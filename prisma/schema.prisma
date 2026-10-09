@@ -117,6 +117,7 @@ model Workspace {
   marathons     Marathon[]
   aiProviders   AiProvider[]
   resources     Resource[]
+  projects      Project[]
 }
 
 model User {
@@ -237,6 +238,30 @@ model Resource {
   @@index([workspaceId, group])
   @@index([workspaceId, level])
   @@index([workspaceId, type])
+  @@index([workspaceId, favorite])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  sourceKey   String   @unique
+  title       String
+  description String?
+  category    String
+  stageRef    String?
+  weekWhen    String?
+  priority    String?
+  difficulty  String?
+  estHours    String?
+  dependency  String?
+  favorite    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, category])
   @@index([workspaceId, favorite])
 }
 
